@@ -1,0 +1,27 @@
+# Node dependencies
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Python bytecode and caches
+__pycache__/
+*.py[cod]
+*$py.class
+*.pyc
+
+# Local and temporary files
+*.tmp
+*.bak
+.vscode/
+.idea/
+
+# Large binaries & game distributions
+originalGame/
+backups/
+extracted/
+
+# OS specific files
+Thumbs.db
+Desktop.ini
+.DS_Store

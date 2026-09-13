@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LucyEditor</title>
+    <link rel="icon" type="image/png" href="assets/icon.png">
+    <link rel="stylesheet" href="css/app.css">
+    <!-- Monaco Editor AMD Loader -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.45.0/min/vs/loader.min.js"></script>
+</head>
+<body>
+    <div id="app-container">
+        <!-- Header Toolbar -->
+        <header id="app-header">
+            <div class="header-brand">
+                <img src="assets/icon.png" class="brand-icon-img" alt="LucyEditor Logo" />
+                <div>
+                    <div class="brand-title" data-i18n="app.title">LucyEditor</div>
+                    <div class="brand-subtitle" data-i18n="app.subtitle">Visual Novel Modding Studio</div>
+                </div>
+            </div>
+
+            <div class="header-actions">
+                <button id="btn-save" class="btn btn-secondary" data-i18n-title="btn.save_all_tooltip">
+                    <span>💾</span>
+                    <span data-i18n="btn.save_all">Save All</span>
+                </button>
+                <button id="btn-pack" class="btn btn-primary" data-i18n-title="btn.build_mod_tooltip">
+                    <span>📦</span>
+                    <span data-i18n="btn.build_mod">Build Mod</span>
+                </button>
+                <button id="btn-run-game" class="btn btn-game" data-i18n-title="btn.run_game_tooltip">
+                    <span>🎮</span>
+                    <span data-i18n="btn.run_game">Run Game</span>
+                </button>
+                <button id="btn-game-folder" class="btn btn-secondary" data-i18n-title="btn.game_folder_tooltip" onclick="app.openFolder('game')">
+                    <span>📁</span>
+                    <span data-i18n="btn.game_folder">Game Folder</span>
+                </button>
+                <button id="btn-backups" class="btn btn-secondary" data-i18n-title="btn.backups_tooltip">
+                    <span>🔄</span>
+                    <span data-i18n="btn.backups">Backups</span>
+                </button>
+                <button id="btn-settings" class="btn btn-secondary" data-i18n-title="btn.settings_tooltip">
+                    <span>⚙️</span>
+                    <span data-i18n="btn.settings">Settings</span>
+                </button>
+                <button id="btn-syntax-toggle" class="btn btn-secondary btn-syntax" data-i18n-title="btn.syntax_tooltip" title="Toggle Visual Syntax (Visual English ↔ Raw Korean)">
+                    🔤 Syntax: EN
+                </button>
+                <button id="btn-lang-toggle" class="btn btn-secondary btn-lang" title="Switch Language / Сменить язык">
+                    🌐 EN
+                </button>
+            </div>
+        </header>
+
+        <!-- Main Workspace -->
+        <main id="app-body">
+            <!-- Left Sidebar: Project Explorer -->
+            <aside id="sidebar-left">
+                <div class="sidebar-header">
+                    <div class="sidebar-title">
+                        <span>📁</span>
+                        <span data-i18n="sidebar.scripts_title">Project Scripts</span>
+                    </div>
+                    <button id="btn-new-script" class="btn-micro" data-i18n="sidebar.new_file">+ File</button>
+                </div>
+
+                <div class="sidebar-search-box">
+                    <input type="text" id="script-search" class="search-input" data-i18n-placeholder="sidebar.search_placeholder" placeholder="Search scripts..." />
+                </div>
+
+                <div id="script-tree-container" class="tree-container">
+                    <!-- Script items rendered dynamically by app.js -->
+                </div>
+            </aside>
+
+            <!-- Center: Monaco Editor & Tabs -->
+            <section id="editor-area">
+                <div id="tabs-container">
+                    <!-- Tab items rendered dynamically -->
+                </div>
+                <div id="editor-container"></div>
+            </section>
+
+            <!-- Right Sidebar: Live Preview, Command Palette, Asset Explorer -->
+            <aside id="sidebar-right">
+                <div class="sidebar-tab-strip">
+                    <button class="sidebar-tab-btn active" data-tab="preview">
+                        <span>👁️</span>
+                        <span data-i18n="tab.preview">Live Preview</span>
+                    </button>
+                    <button class="sidebar-tab-btn" data-tab="commands">
+                        <span>⚡</span>
+                        <span data-i18n="tab.commands">Commands</span>
+                    </button>
+                    <button class="sidebar-tab-btn" data-tab="assets">
+                        <span>🎨</span>
+                        <span data-i18n="tab.assets">Assets</span>
+                    </button>
+                </div>
+
+                <!-- Panel 1: Live VN Preview Simulator -->
+                <div id="panel-preview" class="sidebar-panel active">
+                    <div class="sim-container">
+                        <div id="sim-screen" class="sim-screen" title="Click to advance dialogue line">
+                            <img id="sim-bg" class="sim-layer" src="" alt="Background" />
+                            <img id="sim-sprite" class="sim-layer" src="" alt="Character Sprite" style="display: none;" />
+                            
+                            <!-- Authentic Lucy Dialogue Box -->
+                            <div class="sim-textbox">
+                                <div id="sim-speaker-name" class="sim-name-badge">Protagonist</div>
+                                <div id="sim-dialogue-text" class="sim-text">Loading dialogue preview...</div>
+                                <div class="sim-advance-arrow">▼</div>
+                            </div>
+                        </div>
+
+                        <div class="sim-controls">
+                            <button id="btn-sim-prev" class="btn btn-secondary" data-i18n="sim.prev">◀ Prev</button>
+                            <span id="sim-step-counter" class="sim-step-info">Line 1 of 1</span>
+                            <button id="btn-sim-next" class="btn btn-primary" data-i18n="sim.next">Next ▶</button>
+                            <button id="btn-sim-sync" class="btn btn-secondary active">Sync: ON</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Panel 2: One-Click Command Palette -->
+                <div id="panel-commands" class="sidebar-panel">
+                    <div id="cmd-palette-container">
+                        <!-- Categorized buttons rendered dynamically -->
+                    </div>
+                </div>
+
+                <!-- Panel 3: Asset Explorer (Images & Audio) -->
+                <div id="panel-assets" class="sidebar-panel">
+                    <div class="asset-explorer-header">
+                        <input type="text" id="asset-search" class="search-input" data-i18n-placeholder="assets.search_placeholder" placeholder="Search images or audio..." />
+                        <div class="asset-subtabs">
+                            <button class="asset-subtab active" data-tab="images" data-i18n="assets.tab_images">Images / CG</button>
+                            <button class="asset-subtab" data-tab="bgms" data-i18n="assets.tab_bgms">Music (BGM)</button>
+                            <button class="asset-subtab" data-tab="fxs" data-i18n="assets.tab_fxs">Sounds (SFX)</button>
+                        </div>
+                    </div>
+                    <div id="asset-list-container">
+                        <!-- Rendered dynamically -->
+                    </div>
+                </div>
+            </aside>
+        </main>
+
+        <!-- Status Bar -->
+        <footer id="app-statusbar">
+            <div class="status-left">
+                <div class="status-item">
+                    <span id="status-game-found" class="status-indicator online">Detecting game...</span>
+                </div>
+                <div class="status-item">
+                    <span id="status-pack-size">Scripts.nkpack: -- KB</span>
+                </div>
+                <div class="status-item">
+                    <span id="status-pos">Line 1, Col 1</span>
+                </div>
+            </div>
+
+            <div class="status-right">
+                <div class="status-item">
+                    <span id="diag-badge" class="badge badge-success">0 ERR, 0 WARN</span>
+                </div>
+                <div class="status-item">
+                    <span>UTF-8 (CRLF)</span>
+                </div>
+                <div class="status-item">
+                    <span>NekoNovel 1.50 Engine</span>
+                </div>
+            </div>
+        </footer>
+    </div>
+
+    <!-- Modals -->
+
+    <!-- Backups Manager Modal -->
+    <div id="modal-backups" class="modal-overlay" style="display: none;">
+        <div class="modal-dialog">
+            <div class="modal-header">
+                <div>
+                    <h3 class="modal-title" data-i18n="modal.backups_title">Game Backups Manager</h3>
+                    <p class="modal-desc" data-i18n="modal.backups_desc">Save and restore clean copies of your Scripts.nkpack archive.</p>
+                </div>
+                <button id="btn-close-backups" class="btn-close-modal">&times;</button>
+            </div>
+            <div class="modal-toolbar">
+                <button id="btn-create-backup" class="btn btn-primary" data-i18n="modal.create_backup">+ Create New Backup</button>
+            </div>
+            <div id="backups-list-container" class="modal-body-scroll">
+                <!-- Rendered dynamically -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Setup / Settings Modal -->
+    <div id="modal-setup" class="modal-overlay" style="display: none;">
+        <div class="modal-dialog">
+            <div class="modal-header">
+                <div>
+                    <h3 class="modal-title" data-i18n="modal.setup_title">Game Configuration & Setup</h3>
+                    <p class="modal-desc" data-i18n="modal.setup_desc">Configure the location of your installed Lucy game.</p>
+                </div>
+                <button id="btn-close-setup" class="btn-close-modal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label class="form-label" data-i18n="modal.game_path_label">Active Game Directory:</label>
+                    <div class="input-with-btn">
+                        <input type="text" id="setup-game-path" class="search-input" />
+                        <button id="btn-browse-game" class="btn btn-secondary" data-i18n="modal.browse">Browse...</button>
+                    </div>
+                </div>
+
+                <div class="form-group checkbox-group">
+                    <label>
+                        <input type="checkbox" id="setup-steam-sync" checked />
+                        <span data-i18n="modal.steam_sync_label">Automatically sync repacked mod to Steam directory</span>
+                    </label>
+                </div>
+
+                <div class="setup-unpack-box">
+                    <div class="setup-unpack-info">
+                        <h4 data-i18n="modal.unpack_btn">Unpack All Game Archives (.nkpack)</h4>
+                        <p data-i18n="modal.unpack_desc">Extracts Scripts, Images, BGM, and SFX into the workspace.</p>
+                    </div>
+                    <button id="btn-unpack-all" class="btn btn-accent" data-i18n="modal.unpack_btn">Unpack All</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Notifications Container -->
+    <div id="toast-container"></div>
+
+    <!-- Global Loading Spinner Overlay -->
+    <div id="global-spinner-overlay">
+        <div class="spinner"></div>
+        <div id="spinner-text">Operation in progress...</div>
+    </div>
+
+    <!-- Application Scripts -->
+    <script src="js/i18n.js"></script>
+    <script src="js/syntax_translator.js"></script>
+    <script src="js/nekonovel_lang.js"></script>
+    <script src="js/monaco_setup.js"></script>
+    <script src="js/preview_sim.js"></script>
+    <script src="js/command_palette.js"></script>
+    <script src="js/asset_explorer.js"></script>
+    <script src="js/app.js"></script>
+</body>
+</html>

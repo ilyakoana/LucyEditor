@@ -1,0 +1,22 @@
+{
+  "name": "lucy-editor",
+  "productName": "LucyEditor",
+  "version": "1.0.0",
+  "description": "Modern Visual Novel Modding Studio for Lucy -The Eternity She Wished For-",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron ."
+  },
+  "keywords": [
+    "lucy",
+    "nekonovel",
+    "visual-novel",
+    "modding",
+    "editor"
+  ],
+  "author": "LucyEditor Community",
+  "license": "MIT",
+  "devDependencies": {
+    "electron": "^44.3.0"
+  }
+}

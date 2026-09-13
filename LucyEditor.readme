@@ -1,0 +1,97 @@
+You are an expert full-stack developer specialized in creating professional desktop tools for visual novel modding. Your task is to design and build a complete, polished, modern desktop application called "LucyEditor" specifically for modding the game Lucy -The Eternity She Wished For-.
+Core Goal
+Create a comfortable, feature-rich editor that allows community to easily edit the game’s scripts (.txt files inside Scripts.nkpack), add new content, preview changes, and repack everything with one click — without needing to manually deal with QuickBMS commands or folder structures. Basically, to mod the game.
+Technical Context of the Engine
+The game uses a custom Korean visual novel engine (NekoNovel-style). Scripts are plain text files with Korean commands. Important commands include:
+
+대사 → Normal dialogue
+대사새줄 + 대사잇기 → Continue dialogue on new line
+대기 → Wait for click
+스크립트 이름.txt 주인공 / 이름지우기 → Show/hide character name
+보이스 → Play voice
+CG filename / 페이드인 / 페이드아웃 → Show images with fades
+배경 / 배경룰페이드인 → Change background
+효과음 / 배경음악 → Sound effects and BGM
+딜레이 → Wait time
+변수 → Variables
+점프 / 북마크 → Jump / labels
+쓰레드 / 쓰레드시작 → Threading for parallel actions
+게임상태 → Game state
+And many more (system menus, choices, achievements, etc.)
+
+The archive format is .nkpack. We already have a working QuickBMS script (lucy.bms) that correctly extracts and reimports files when the folder structure is Scripts\filename.txt. This would be the essential core part of our editor/engine, cuz it's for packing and unpacking the game.
+Required Features of the Application
+
+Project System
+Open game folder (asks for the original game path or files)
+Automatically extract scripts into a clean working directory
+Save project state
+
+File Browser / Project Explorer
+Tree view (or not) of all extracted scripts (chapters, character files, system files, etc.)
+Easy search and filtering
+Highlight modified files
+
+Powerful Internal Text Editor
+Syntax highlighting for Korean engine commands
+Auto-completion for common commands
+Fromat coding for dialogue, commands, names, jumps, etc.
+Line numbers, folding, search & replace
+Multiple tabs
+
+One-Click Action Buttons / Command Palette (very important)
+Create a rich toolbar or side panel with one-click buttons that insert properly formatted code blocks, for example:
+Add normal dialogue
+Add multi-line dialogue (대사새줄 + 대사잇기)
+Add internal thought
+Change background + fade
+Show character CG + fade
+Play sound effect
+Play / stop BGM
+Show / hide character name
+Add delay
+Create choice menu
+Jump to label / create bookmark
+Start/end thread
+Fade out dialogue window
+Scene transition
+Set variable
+Call another script
+Achievement unlock block
+etc.
+Each button should insert clean, correctly indented, ready-to-use code with placeholders.
+Sprite / Image Management
+Ability to add new images/sprites
+Preview of CGs and backgrounds
+Easy insertion of image commands with correct naming
+
+One-Click Actions
+Extract Scripts
+Pack / Reimport (must automatically create the correct reimport/Scripts/ structure and run QuickBMS with -w -r -r)
+Run Game (launch Lucy.exe)
+Open game folder
+Restore original backup for specific scripts/packs
+
+Quality of Life
+English interface
+Live preview of dialogue flow (optional but highly desired)
+Error checking for common mistakes (missing 대기, broken jumps, etc.)
+Auto-save
+
+Technical Requirements
+Windows first priority
+Clean modern UI (Electron + modern GUI framework are all acceptable — choose the best balance of power and ease)
+Must correctly handle the Scripts\ subfolder structure for reimport
+Must call QuickBMS correctly under the hood (Read QUICKBMS_GUIDE.md)
+Good error handling and user feedback
+
+
+Deliverables
+Please start by:
+
+Proposing the best tech stack for this tool
+Creating a detailed architecture and file structure
+Designing the main UI layout
+Implementing the core features step by step (starting with project loading + text editor + one-click packing)
+
+Make the tool feel professional and enjoyable to use for community — something that turns the painful manual QuickBMS workflow and script/text editing into a smooth, creative experience.
