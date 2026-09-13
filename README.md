@@ -29,28 +29,7 @@ In the original game, dialogue, branching logic, character expressions, CGs, and
 
 ## 📸 Interface Layout
 
-```
-+-------------------------------------------------------------------------------------------------------+
-|  🌸 LucyEditor  |  [💾 Save All]  [📦 Build Mod]  [🎮 Run Game]  [📁 Game Folder]  [🔄 Backups]  [⚙️]   |
-+----------------------+-----------------------------------------------+--------------------------------+
-| 📁 PROJECT SCRIPTS   | 📝 MONACO SCRIPT EDITOR                       | 👁️ LIVE SIMULATOR / PALETTE  |
-|                      |                                               |                                |
-|  ▼ Chapters          |  chapter01.txt ×  chapter02.txt               | +----------------------------+ |
-|    • chapter01.txt   |  -------------------------------------------- | |  [ Background Image Layer ]| |
-|    • chapter02.txt   |  1 | // Morning scene                         | |                            | |
-|    • 20년.txt        |  2 | 스크립트 이름.txt 주인공                  | |    [ Lucy Sprite Layer ]   | |
-|  ▼ Characters        |  3 | 대사 "Good morning, Lucy."               | |                            | |
-|    • 루시.txt         |  4 | 대기                                     | | [Protagonist]              | |
-|    • 기박사.txt      |  5 | 스크립트 이름.txt 루시                    | | "Good morning, Lucy."      | |
-|  ▼ System            |  6 | 보이스 lucy0012_{{$언어}}.mp3            | +----------------------------+ |
-|    • 시스템_메뉴.txt |  7 | 대사 "Master, have you awoken?"          | [◀ Prev]  Line 7 of 42  [Next ▶]
-|    • 기본셋팅.txt     |  8 | 대기                                     | ------------------------------ |
-|                      |                                               | ⚡ Quick Command Palette        |
-|  [+ New Script]      |  Ln 7, Col 1 | UTF-8 CRLF | 0 Errors, 0 Warns | 🎨 Asset Explorer (CG/Audio)   |
-+----------------------+-----------------------------------------------+--------------------------------+
-|  🟢 Steam Detected: C:\Program Files (x86)\Steam\...  |  Scripts.nkpack: 142 KB  | NekoNovel 1.50 Engine |
-+-------------------------------------------------------------------------------------------------------+
-```
+![description](https://i.imgur.com/mmLghO4.png)
 
 ---
 
