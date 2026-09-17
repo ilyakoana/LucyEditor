@@ -46,6 +46,20 @@ const QUICK_HERO_COMMANDS = [
         title_ru: "Пауза (1 сек)",
         badge: "딜레이 1000",
         code: "딜레이 1000"
+    },
+    {
+        icon: "💭",
+        title_en: "Internal Thought",
+        title_ru: "Мысли героя",
+        badge: "이름지우기",
+        code: '스크립트 이름.txt 이름지우기\n대사 "(I thought about that for a second...)"\n대기'
+    },
+    {
+        icon: "🏷️",
+        title_en: "Clear Name Tag",
+        title_ru: "Скрыть имя",
+        badge: "이름지우기",
+        code: "스크립트 이름.txt 이름지우기"
     }
 ];
 
@@ -365,7 +379,7 @@ function renderCommandPalette(containerId, filterQuery = "") {
                     <span>${catName}</span>
                     <span class="cmd-accordion-badge">${matchingItems.length}</span>
                 </button>
-                <div class="cmd-accordion-body" style="${isExpanded ? 'display: block;' : ''}">
+                <div class="cmd-accordion-body" style="${isExpanded ? 'display: flex;' : 'display: none;'}">
         `;
 
         for (const item of matchingItems) {
@@ -405,7 +419,7 @@ function renderCommandPalette(containerId, filterQuery = "") {
             group.classList.toggle("open");
             const body = group.querySelector(".cmd-accordion-body");
             if (body) {
-                body.style.display = group.classList.contains("open") ? "block" : "none";
+                body.style.display = group.classList.contains("open") ? "flex" : "none";
             }
         });
     });

@@ -46,12 +46,6 @@
                     <span>⚙️</span>
                     <span data-i18n="btn.settings">Settings</span>
                 </button>
-                <button id="btn-syntax-toggle" class="btn btn-secondary btn-syntax" data-i18n-title="btn.syntax_tooltip" title="Toggle Visual Syntax (Visual English ↔ Raw Korean)">
-                    🔤 Syntax: EN
-                </button>
-                <button id="btn-lang-toggle" class="btn btn-secondary btn-lang" title="Switch Language / Сменить язык">
-                    🌐 EN
-                </button>
             </div>
         </header>
 
@@ -106,10 +100,11 @@
                     <div class="sim-container">
                         <div id="sim-screen" class="sim-screen" title="Click to advance dialogue line">
                             <img id="sim-bg" class="sim-layer" src="" alt="Background" />
-                            <img id="sim-sprite" class="sim-layer" src="" alt="Character Sprite" style="display: none;" />
+                            <div id="sim-dim" class="sim-dim-overlay"></div>
+                            <div id="sim-sprites-container" class="sim-sprites-container"></div>
                             
                             <!-- Authentic Lucy Dialogue Box -->
-                            <div class="sim-textbox">
+                            <div id="sim-textbox" class="sim-textbox">
                                 <div id="sim-speaker-name" class="sim-name-badge">Protagonist</div>
                                 <div id="sim-dialogue-text" class="sim-text">Loading dialogue preview...</div>
                                 <div class="sim-advance-arrow">▼</div>
@@ -122,6 +117,12 @@
                             <button id="btn-sim-next" class="btn btn-primary" data-i18n="sim.next">Next ▶</button>
                             <button id="btn-sim-sync" class="btn btn-secondary active">Sync: ON</button>
                         </div>
+
+                        <!-- Big Preview Launcher Button -->
+                        <button id="btn-open-big-preview" class="btn btn-accent btn-big-preview" title="Open 1280x720 interactive scene simulator">
+                            <span class="btn-icon">🎬</span>
+                            <span data-i18n="sim.open_big_preview">Большой Preview (1280×720)</span>
+                        </button>
                     </div>
                 </div>
 
@@ -153,9 +154,6 @@
         <footer id="app-statusbar">
             <div class="status-left">
                 <div class="status-item">
-                    <span id="status-game-found" class="status-indicator online">Detecting game...</span>
-                </div>
-                <div class="status-item">
                     <span id="status-pack-size">Scripts.nkpack: -- KB</span>
                 </div>
                 <div class="status-item">
@@ -178,6 +176,29 @@
     </div>
 
     <!-- Modals -->
+
+    <!-- Generic Prompt Dialog Modal -->
+    <div id="modal-prompt" class="modal-overlay" style="display: none; z-index: 9500;">
+        <div class="modal-dialog" style="max-width: 440px;">
+            <div class="modal-header">
+                <div>
+                    <h3 class="modal-title" id="prompt-modal-title">Input</h3>
+                    <p class="modal-desc" id="prompt-modal-desc"></p>
+                </div>
+                <button id="btn-prompt-close" class="btn-close-modal">&times;</button>
+            </div>
+            <div class="modal-body" style="padding: 16px 20px 20px; gap: 14px;">
+                <div class="form-group" style="margin: 0;">
+                    <input type="text" id="prompt-modal-input" class="search-input" style="width: 100%; font-size: 13px; padding: 9px 12px; box-sizing: border-box;" autocomplete="off" />
+                    <div id="prompt-modal-error" style="color: var(--accent-rose); font-size: 11px; display: none; margin-top: 6px;"></div>
+                </div>
+                <div style="display: flex; justify-content: flex-end; gap: 8px; margin-top: 4px;">
+                    <button id="btn-prompt-cancel" class="btn btn-secondary">Cancel</button>
+                    <button id="btn-prompt-confirm" class="btn btn-primary">OK</button>
+                </div>
+            </div>
+        </div>
+    </div>
 
     <!-- Backups Manager Modal -->
     <div id="modal-backups" class="modal-overlay" style="display: none;">
@@ -209,6 +230,35 @@
                 <button id="btn-close-setup" class="btn-close-modal">&times;</button>
             </div>
             <div class="modal-body">
+                <!-- UI Language Preference -->
+                <div class="form-group">
+                    <label class="form-label" data-i18n="settings.language_label">Application Language / Язык интерфейса:</label>
+                    <div class="settings-btn-group">
+                        <button id="btn-setting-lang-en" class="settings-btn-pill">
+                            <span>🌐</span> English
+                        </button>
+                        <button id="btn-setting-lang-ru" class="settings-btn-pill">
+                            <span>🇷🇺</span> Русский
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Visual Syntax Preference -->
+                <div class="form-group">
+                    <label class="form-label" data-i18n="settings.syntax_label">Editor Script Syntax Mode / Режим синтаксиса скриптов:</label>
+                    <div class="settings-btn-group">
+                        <button id="btn-setting-syntax-en" class="settings-btn-pill">
+                            <span>🔤</span> Visual English (Recommended)
+                        </button>
+                        <button id="btn-setting-syntax-ko" class="settings-btn-pill">
+                            <span>🇰🇷</span> Raw Korean (Original)
+                        </button>
+                    </div>
+                    <p class="settings-note" data-i18n="settings.syntax_desc">
+                        Visual English displays clean commands (dialogue, wait, delay, bg, fadein...). Files are always saved in 100% authentic Korean for the game engine.
+                    </p>
+                </div>
+
                 <div class="form-group">
                     <label class="form-label" data-i18n="modal.game_path_label">Active Game Directory:</label>
                     <div class="input-with-btn">
@@ -248,6 +298,7 @@
     <script src="js/i18n.js"></script>
     <script src="js/syntax_translator.js"></script>
     <script src="js/nekonovel_lang.js"></script>
+    <script src="js/nekonovel_interpreter.js"></script>
     <script src="js/monaco_setup.js"></script>
     <script src="js/preview_sim.js"></script>
     <script src="js/command_palette.js"></script>

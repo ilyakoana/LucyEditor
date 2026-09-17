@@ -7,7 +7,7 @@ const I18N_DATA = {
     en: {
         // Header
         "app.title": "LucyEditor",
-        "app.subtitle": "Visual Novel Modding Studio",
+        "app.subtitle": "Visual Novel Modding Studio for Lucy -The Eternity She Wished For-",
         "btn.save_all": "Save All",
         "btn.save_all_tooltip": "Save all open modified scripts (Ctrl+S / Ctrl+Shift+S)",
         "btn.build_mod": "Build Mod",
@@ -46,6 +46,7 @@ const I18N_DATA = {
         "sim.no_lines": "No dialogue lines found in current script.",
         "sim.speaker_default": "Protagonist",
         "sim.step_info": "Line {current} of {total} (line {line})",
+        "sim.open_big_preview": "Full Scene Preview (1280×720)",
 
         // Commands Panel
         "cmd.quick_title": "⚡ Quick Insert",
@@ -82,13 +83,24 @@ const I18N_DATA = {
         "modal.backups_desc": "Save and restore clean copies of your Scripts.nkpack archive before making big edits.",
         "modal.create_backup": "+ Create New Backup",
         "modal.backup_note_prompt": "Enter a note for this backup (e.g., 'Before Chapter 2 rewrite'):",
+        "modal.rename": "Rename",
+        "modal.rename_backup_title": "Rename Backup",
+        "modal.rename_backup_prompt": "Enter a new note or description for this backup:",
         "modal.restore": "Restore",
         "modal.delete": "Delete",
         "modal.no_backups": "No backups created yet. Click 'Create New Backup' above.",
+        "modal.new_script_title": "Create New Script",
+        "modal.new_script_prompt": "Enter new script file name (e.g., custom_story.txt):",
+        "modal.new_script_placeholder": "custom_story.txt",
+        "modal.prompt_ok": "OK",
+        "modal.prompt_cancel": "Cancel",
 
         // Settings / Setup Modal
         "modal.setup_title": "Game Configuration & Setup",
         "modal.setup_desc": "Configure the location of your installed Lucy game and unpack game assets.",
+        "settings.language_label": "Application Language:",
+        "settings.syntax_label": "Editor Script Syntax Mode:",
+        "settings.syntax_desc": "Visual English displays clean commands (dialogue, wait, delay, bg, fadein...). Files are always saved in 100% authentic Korean for the game engine.",
         "modal.game_path_label": "Active Game Directory:",
         "modal.browse": "Browse...",
         "modal.steam_detected": "Steam installation auto-detected!",
@@ -102,7 +114,9 @@ const I18N_DATA = {
         "toast.mod_built": "Mod successfully compiled! ({files} files, {size} KB). Game updated.",
         "toast.game_launched": "Lucy.exe launched!",
         "toast.backup_created": "Backup '{name}' created successfully!",
+        "toast.backup_renamed": "Backup note updated!",
         "toast.backup_restored": "Backup restored! Game files reset.",
+        "toast.script_created": "Created '{name}'!",
         "toast.imported": "Imported {count} asset(s) successfully!",
         "toast.syntax_switched_en": "Visual Syntax: English enabled! Commands are displayed in English, saved as genuine Korean.",
         "toast.syntax_switched_ko": "Visual Syntax: Korean enabled! Showing raw engine commands."
@@ -111,7 +125,7 @@ const I18N_DATA = {
     ru: {
         // Header
         "app.title": "LucyEditor",
-        "app.subtitle": "Студия создания модов для Lucy",
+        "app.subtitle": "Студия создания модов для Lucy -The Eternity She Wished For-",
         "btn.save_all": "Сохранить всё",
         "btn.save_all_tooltip": "Сохранить все открытые измененные скрипты (Ctrl+S / Ctrl+Shift+S)",
         "btn.build_mod": "Собрать мод",
@@ -150,6 +164,7 @@ const I18N_DATA = {
         "sim.no_lines": "Нет диалоговых реплик в текущем скрипте.",
         "sim.speaker_default": "Главный герой",
         "sim.step_info": "Реплика {current} из {total} (стр {line})",
+        "sim.open_big_preview": "Большой Preview (1280×720)",
 
         // Commands Panel
         "cmd.quick_title": "⚡ Быстрые действия",
@@ -186,13 +201,24 @@ const I18N_DATA = {
         "modal.backups_desc": "Сохраняйте и восстанавливайте чистые копии Scripts.nkpack перед крупными изменениями сюжета.",
         "modal.create_backup": "+ Создать бэкап",
         "modal.backup_note_prompt": "Введите описание для бэкапа (например: 'Оригинал' или 'Перед правками 2 главы'):",
+        "modal.rename": "Переименовать",
+        "modal.rename_backup_title": "Переименование бэкапа",
+        "modal.rename_backup_prompt": "Введите новое название или описание для бэкапа:",
         "modal.restore": "Восстановить",
         "modal.delete": "Удалить",
         "modal.no_backups": "Бэкапов пока нет. Нажмите '+ Создать бэкап' выше.",
+        "modal.new_script_title": "Создать новый скрипт",
+        "modal.new_script_prompt": "Введите имя файла нового скрипта (например, custom_story.txt):",
+        "modal.new_script_placeholder": "custom_story.txt",
+        "modal.prompt_ok": "ОК",
+        "modal.prompt_cancel": "Отмена",
 
         // Settings / Setup Modal
-        "modal.setup_title": "Настройки папки игры и распаковка",
-        "modal.setup_desc": "Укажите путь к установленной игре Lucy для автоматической перепаковки и запуска.",
+        "modal.setup_title": "Настройки программы и игры",
+        "modal.setup_desc": "Укажите язык, режим синтаксиса и путь к установленной игре Lucy.",
+        "settings.language_label": "Язык интерфейса программы:",
+        "settings.syntax_label": "Режим синтаксиса скриптов в редакторе:",
+        "settings.syntax_desc": "В режиме Visual English команды отображаются как dialogue, wait, delay, bg, fadein... но на диск сохраняются в 100% оригинальном корейском формате для движка игры.",
         "modal.game_path_label": "Путь к папке с игрой:",
         "modal.browse": "Обзор...",
         "modal.steam_detected": "Steam-версия игры обнаружена автоматически!",
@@ -206,7 +232,9 @@ const I18N_DATA = {
         "toast.mod_built": "Мод успешно собран! ({files} файлов, {size} КБ). Файлы игры обновлены.",
         "toast.game_launched": "Lucy.exe запущена!",
         "toast.backup_created": "Бэкап '{name}' успешно создан!",
+        "toast.backup_renamed": "Описание бэкапа обновлено!",
         "toast.backup_restored": "Бэкап восстановлен! Файлы игры возвращены к точке сохранения.",
+        "toast.script_created": "Скрипт '{name}' успешно создан!",
         "toast.imported": "Успешно импортировано файлов: {count}!",
         "toast.syntax_switched_en": "Визуальный синтаксис: Английский включен! Команды отображаются на английском, сохраняются на корейском.",
         "toast.syntax_switched_ko": "Визуальный синтаксис: Корейский оригинал включен! Отображаются прямые команды движка."
@@ -273,13 +301,16 @@ function applyI18n() {
     // Update language toggle button indicator
     const langBtn = document.getElementById("btn-lang-toggle");
     if (langBtn) {
-        langBtn.textContent = currentLocale === "en" ? "🌐 EN" : "🌐 RU";
+        langBtn.textContent = currentLocale === "en" ? "English" : "Russian";
     }
 
     // Refresh dynamic sections
-    if (window.app) {
-        window.app.renderScriptTree();
-        window.app.renderStatus();
+    const appInst = window.app || window.lucyApp;
+    if (appInst) {
+        if (appInst.renderScriptTree) appInst.renderScriptTree();
+        if (appInst.renderTabs) appInst.renderTabs();
+        if (appInst.renderStatus) appInst.renderStatus();
+        if (appInst.updateSettingsPills) appInst.updateSettingsPills();
     }
     if (window.renderCommandPalette) {
         window.renderCommandPalette("cmd-palette-container");

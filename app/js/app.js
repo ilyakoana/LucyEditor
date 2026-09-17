@@ -14,6 +14,7 @@ class LucyApp {
         this.editor = null;
         this.isSaving = false;
         this.syntaxMode = localStorage.getItem("lucy_syntax_mode") || "english";
+        window.app = this;
         window.lucyApp = this;
     }
 
@@ -30,6 +31,23 @@ class LucyApp {
         previewSimulator.init();
         renderCommandPalette("cmd-palette-container");
         assetExplorer.init();
+
+        // Big Preview IPC integration
+        if (window.lucyApi) {
+            if (window.lucyApi.onPreviewJump) {
+                window.lucyApi.onPreviewJump((line) => {
+                    if (editorInstance && line) {
+                        editorInstance.setPosition({ lineNumber: line, column: 1 });
+                        editorInstance.revealLineInCenter(line);
+                    }
+                });
+            }
+            if (window.lucyApi.onRequestInitialState) {
+                window.lucyApi.onRequestInitialState(() => {
+                    this.syncToBigPreview();
+                });
+            }
+        }
 
         // Check if first-time run (no extracted scripts)
         if (!this.status || !this.status.has_extracted || this.status.extracted_count === 0) {
@@ -61,15 +79,27 @@ class LucyApp {
             "editor-container",
             "// LucyEditor - Ready\r\n",
             (line, col) => {
-                previewSimulator.syncToLine(line);
+                if (this.cursorSyncTimer) clearTimeout(this.cursorSyncTimer);
+                this.cursorSyncTimer = setTimeout(() => {
+                    previewSimulator.syncToLine(line);
+                    this.syncToBigPreview(line);
+                }, 50);
             },
             () => {
                 if (this.activeTabName) {
                     const tab = this.openTabs.find(t => t.name === this.activeTabName);
                     if (tab) {
-                        tab.isDirty = true;
-                        this.renderTabs();
-                        previewSimulator.parseScript(editorInstance.getValue());
+                        if (!tab.isDirty) {
+                            tab.isDirty = true;
+                            this.renderTabs();
+                        }
+                        if (this.previewSyncTimer) clearTimeout(this.previewSyncTimer);
+                        this.previewSyncTimer = setTimeout(() => {
+                            if (editorInstance) {
+                                previewSimulator.parseScript(editorInstance.getValue());
+                                this.syncToBigPreview();
+                            }
+                        }, 300);
                     }
                 }
             }
@@ -95,19 +125,11 @@ class LucyApp {
     }
 
     renderStatus() {
-        const gameStatusEl = document.getElementById("status-game-found");
         const packSizeEl = document.getElementById("status-pack-size");
 
-        if (this.status) {
-            if (gameStatusEl) {
-                const hasGame = this.status.has_game || this.status.steam_installed;
-                gameStatusEl.textContent = hasGame ? t("status.game_found") : t("status.game_missing");
-                gameStatusEl.className = hasGame ? "status-indicator online" : "status-indicator offline";
-            }
-            if (packSizeEl) {
-                const kb = (this.status.pack_size / 1024).toFixed(0);
-                packSizeEl.textContent = t("status.pack", { size: kb });
-            }
+        if (this.status && packSizeEl) {
+            const kb = (this.status.pack_size / 1024).toFixed(0);
+            packSizeEl.textContent = t("status.pack", { size: kb });
         }
     }
 
@@ -144,7 +166,15 @@ class LucyApp {
         };
 
         for (const s of this.scripts) {
-            if (filter && !s.name.toLowerCase().includes(filter)) continue;
+            const displayName = typeof SyntaxTranslator !== "undefined"
+                ? SyntaxTranslator.getScriptDisplayName(s.name, currentLocale)
+                : s.name;
+
+            if (filter) {
+                const matchesOriginal = s.name.toLowerCase().includes(filter);
+                const matchesDisplay = displayName.toLowerCase().includes(filter);
+                if (!matchesOriginal && !matchesDisplay) continue;
+            }
             const cat = categories[s.category] || categories.other;
             cat.items.push(s);
         }
@@ -166,11 +196,17 @@ class LucyApp {
                 const isActive = item.name === this.activeTabName;
                 const tab = this.openTabs.find(t => t.name === item.name);
                 const isDirty = tab && tab.isDirty;
+                const displayName = typeof SyntaxTranslator !== "undefined"
+                    ? SyntaxTranslator.getScriptDisplayName(item.name, currentLocale)
+                    : item.name;
+                const tooltip = typeof SyntaxTranslator !== "undefined"
+                    ? SyntaxTranslator.getScriptTooltip(item.name, currentLocale)
+                    : item.name;
 
                 html += `
-                    <div class="tree-item ${isActive ? 'active' : ''} ${isDirty ? 'dirty' : ''}" data-name="${item.name}">
+                    <div class="tree-item ${isActive ? 'active' : ''} ${isDirty ? 'dirty' : ''}" data-name="${item.name}" title="${tooltip}">
                         <span class="file-icon">📄</span>
-                        <span class="file-name" title="${item.name}">${item.name}</span>
+                        <span class="file-name">${displayName}</span>
                         ${isDirty ? '<span class="dirty-indicator" title="Unsaved">●</span>' : ''}
                         <span class="file-lines">${item.lines} l</span>
                     </div>
@@ -241,6 +277,7 @@ class LucyApp {
         this.renderScriptTree();
 
         previewSimulator.parseScript(tab.model.getValue());
+        this.syncToBigPreview();
         runScriptDiagnostics();
     }
 
@@ -252,7 +289,12 @@ class LucyApp {
 
         const tab = this.openTabs[tabIdx];
         if (tab.isDirty) {
-            if (!confirm(`'${name}' has unsaved changes. Close without saving?`)) {
+            const isRu = typeof currentLocale !== "undefined" && currentLocale === "ru";
+            const disp = typeof SyntaxTranslator !== "undefined" ? SyntaxTranslator.getScriptDisplayName(name, currentLocale) : name;
+            const promptMsg = isRu
+                ? `В скрипте '${disp}' есть несохранённые изменения. Закрыть вкладку без сохранения?`
+                : `'${disp}' has unsaved changes. Close tab without saving?`;
+            if (!confirm(promptMsg)) {
                 return;
             }
         }
@@ -282,11 +324,18 @@ class LucyApp {
         let html = "";
         for (const tab of this.openTabs) {
             const isActive = tab.name === this.activeTabName;
+            const displayName = typeof SyntaxTranslator !== "undefined"
+                ? SyntaxTranslator.getScriptDisplayName(tab.name, currentLocale)
+                : tab.name;
+            const tooltip = typeof SyntaxTranslator !== "undefined"
+                ? SyntaxTranslator.getScriptTooltip(tab.name, currentLocale)
+                : tab.name;
+
             html += `
-                <div class="editor-tab ${isActive ? 'active' : ''} ${tab.isDirty ? 'dirty' : ''}" data-name="${tab.name}">
-                    <span class="tab-title" title="${tab.name}">${tab.name}</span>
+                <div class="editor-tab ${isActive ? 'active' : ''} ${tab.isDirty ? 'dirty' : ''}" data-name="${tab.name}" title="${tooltip}">
+                    <span class="tab-title">${displayName}</span>
                     <span class="tab-dirty-dot">●</span>
-                    <button class="tab-close-btn" title="Close">&times;</button>
+                    <button class="tab-close-btn" title="${typeof t === 'function' ? t('tab.close') : 'Close'}">&times;</button>
                 </div>
             `;
         }
@@ -423,26 +472,125 @@ class LucyApp {
         }
     }
 
+    showPrompt({ title, message, placeholder = "", defaultValue = "", confirmText = null, cancelText = null }) {
+        return new Promise((resolve) => {
+            const modal = document.getElementById("modal-prompt");
+            const titleEl = document.getElementById("prompt-modal-title");
+            const descEl = document.getElementById("prompt-modal-desc");
+            const inputEl = document.getElementById("prompt-modal-input");
+            const errorEl = document.getElementById("prompt-modal-error");
+            const btnConfirm = document.getElementById("btn-prompt-confirm");
+            const btnCancel = document.getElementById("btn-prompt-cancel");
+            const btnClose = document.getElementById("btn-prompt-close");
+
+            if (!modal || !inputEl) {
+                resolve(null);
+                return;
+            }
+
+            if (titleEl) titleEl.textContent = title || "Prompt";
+            if (descEl) descEl.textContent = message || "";
+            inputEl.placeholder = placeholder || "";
+            inputEl.value = defaultValue || "";
+            if (errorEl) {
+                errorEl.style.display = "none";
+                errorEl.textContent = "";
+            }
+            if (btnConfirm) btnConfirm.textContent = confirmText || (typeof t === "function" ? t("modal.prompt_ok") : "OK") || "OK";
+            if (btnCancel) btnCancel.textContent = cancelText || (typeof t === "function" ? t("modal.prompt_cancel") : "Cancel") || "Cancel";
+
+            modal.style.display = "flex";
+            setTimeout(() => {
+                inputEl.focus();
+                inputEl.select();
+            }, 50);
+
+            let isDone = false;
+            const cleanup = () => {
+                if (isDone) return;
+                isDone = true;
+                modal.style.display = "none";
+                btnConfirm?.removeEventListener("click", onConfirm);
+                btnCancel?.removeEventListener("click", onCancel);
+                btnClose?.removeEventListener("click", onCancel);
+                modal.removeEventListener("click", onBackdropClick);
+                inputEl.removeEventListener("keydown", onKeyDown);
+                document.removeEventListener("keydown", onDocKeyDown);
+            };
+
+            const onConfirm = () => {
+                const val = inputEl.value;
+                cleanup();
+                resolve(val);
+            };
+
+            const onCancel = () => {
+                cleanup();
+                resolve(null);
+            };
+
+            const onBackdropClick = (e) => {
+                if (e.target === modal) {
+                    onCancel();
+                }
+            };
+
+            const onKeyDown = (e) => {
+                if (e.key === "Enter") {
+                    e.preventDefault();
+                    onConfirm();
+                }
+            };
+
+            const onDocKeyDown = (e) => {
+                if (e.key === "Escape" && modal.style.display !== "none") {
+                    e.preventDefault();
+                    onCancel();
+                }
+            };
+
+            btnConfirm?.addEventListener("click", onConfirm);
+            btnCancel?.addEventListener("click", onCancel);
+            btnClose?.addEventListener("click", onCancel);
+            modal.addEventListener("click", onBackdropClick);
+            inputEl.addEventListener("keydown", onKeyDown);
+            document.addEventListener("keydown", onDocKeyDown);
+        });
+    }
+
     async createNewScript() {
-        const name = prompt("Enter new script file name (e.g., custom_story.txt):");
-        if (!name) return;
+        const name = await this.showPrompt({
+            title: t("modal.new_script_title"),
+            message: t("modal.new_script_prompt"),
+            placeholder: t("modal.new_script_placeholder"),
+            defaultValue: "",
+            confirmText: t("modal.prompt_ok")
+        });
+        if (name === null) return;
+        const trimmed = name.trim();
+        if (!trimmed) return;
+
+        let fileName = trimmed;
+        if (!fileName.endsWith(".txt")) {
+            fileName += ".txt";
+        }
 
         try {
             let data;
             if (window.lucyApi) {
-                data = await window.lucyApi.createScript(name, "// LucyEditor Mod Script\r\n\r\n");
+                data = await window.lucyApi.createScript(fileName, "// LucyEditor Mod Script\r\n\r\n");
             } else {
                 const res = await fetch("/api/script/create", {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ name: name })
+                    body: JSON.stringify({ name: fileName })
                 });
                 data = await res.json();
             }
             if (data && data.success) {
-                showToast(`Created '${data.name}'!`, "success");
+                showToast(t("toast.script_created", { name: data.name }), "success");
                 await this.loadScripts();
-                this.openScript(data.name);
+                await this.openScript(data.name);
             } else {
                 showToast(`Error: ${data ? data.error : 'Failed'}`, "error");
             }
@@ -484,15 +632,18 @@ class LucyApp {
                 return;
             }
 
+            this.currentBackups = res.backups;
+
             let html = "";
             for (const b of res.backups) {
                 html += `
                     <div class="backup-card">
                         <div class="backup-info">
-                            <div class="backup-note">${b.note}</div>
+                            <div class="backup-note">${escapeHtml(b.note)}</div>
                             <div class="backup-meta">${b.date_str} • ${b.size_kb} KB • <code>${b.filename}</code></div>
                         </div>
                         <div class="backup-actions">
+                            <button class="btn btn-secondary btn-micro" onclick="app.renameBackupPrompt('${b.filename}')">${t("modal.rename")}</button>
                             <button class="btn btn-primary btn-micro" onclick="app.restoreBackupItem('${b.filename}')">${t("modal.restore")}</button>
                             <button class="btn btn-danger btn-micro" onclick="app.deleteBackupItem('${b.filename}')">${t("modal.delete")}</button>
                         </div>
@@ -505,14 +656,56 @@ class LucyApp {
         }
     }
 
+    async renameBackupPrompt(filename) {
+        const item = (this.currentBackups || []).find(b => b.filename === filename);
+        const currentNote = item ? item.note : "Backup";
+
+        const newNote = await this.showPrompt({
+            title: t("modal.rename_backup_title"),
+            message: t("modal.rename_backup_prompt"),
+            placeholder: "e.g. Before Chapter 2 rewrite",
+            defaultValue: currentNote,
+            confirmText: t("modal.rename")
+        });
+
+        if (newNote === null) return;
+        const trimmed = newNote.trim();
+        if (!trimmed) return;
+
+        showGlobalSpinner(true, "Renaming backup...");
+        try {
+            if (window.lucyApi) {
+                const res = await window.lucyApi.renameBackup(filename, trimmed);
+                showGlobalSpinner(false);
+                if (res.success) {
+                    showToast(t("toast.backup_renamed"), "success");
+                    await this.refreshBackupsList();
+                } else {
+                    showToast(`Rename error: ${res.error}`, "error");
+                }
+            }
+        } catch (e) {
+            showGlobalSpinner(false);
+            showToast(`Rename failed: ${e}`, "error");
+        }
+    }
+
     async createBackupPrompt() {
-        const note = prompt(t("modal.backup_note_prompt"));
+        const note = await this.showPrompt({
+            title: t("modal.create_backup"),
+            message: t("modal.backup_note_prompt"),
+            placeholder: "e.g. Before Chapter 2 rewrite",
+            defaultValue: "",
+            confirmText: t("modal.prompt_ok")
+        });
         if (note === null) return;
+
+        const trimmedNote = note.trim() || "Manual Backup";
 
         showGlobalSpinner(true, "Creating backup snapshot...");
         try {
             if (window.lucyApi) {
-                const res = await window.lucyApi.createBackup(note);
+                const res = await window.lucyApi.createBackup(trimmedNote);
                 showGlobalSpinner(false);
                 if (res.success) {
                     showToast(t("toast.backup_created", { name: res.filename }), "success");
@@ -565,6 +758,14 @@ class LucyApp {
         }
     }
 
+    hasUnsavedChanges() {
+        return this.openTabs.some(t => t.isDirty);
+    }
+
+    getUnsavedScripts() {
+        return this.openTabs.filter(t => t.isDirty).map(t => t.name);
+    }
+
     // =========================================================================
     // Setup / Settings Modal (Requirement 5)
     // =========================================================================
@@ -582,7 +783,26 @@ class LucyApp {
             steamSyncCheck.checked = !!this.config.steamSync;
         }
 
+        this.updateSettingsPills();
         modal.style.display = "flex";
+    }
+
+    updateSettingsPills() {
+        const isEnLang = typeof currentLocale !== "undefined" ? currentLocale === "en" : true;
+        const btnLangEn = document.getElementById("btn-setting-lang-en");
+        const btnLangRu = document.getElementById("btn-setting-lang-ru");
+        if (btnLangEn && btnLangRu) {
+            btnLangEn.classList.toggle("active", isEnLang);
+            btnLangRu.classList.toggle("active", !isEnLang);
+        }
+
+        const isEnSyntax = this.syntaxMode === "english";
+        const btnSyntaxEn = document.getElementById("btn-setting-syntax-en");
+        const btnSyntaxKo = document.getElementById("btn-setting-syntax-ko");
+        if (btnSyntaxEn && btnSyntaxKo) {
+            btnSyntaxEn.classList.toggle("active", isEnSyntax);
+            btnSyntaxKo.classList.toggle("active", !isEnSyntax);
+        }
     }
 
     closeSetupModal() {
@@ -647,11 +867,12 @@ class LucyApp {
         btn.title = typeof t === "function" ? t("btn.syntax_tooltip") : "Toggle Visual Syntax (Visual English ↔ Raw Korean)";
     }
 
-    toggleSyntaxMode() {
-        const oldMode = this.syntaxMode;
-        this.syntaxMode = oldMode === "english" ? "korean" : "english";
+    setSyntaxMode(newMode) {
+        if (this.syntaxMode === newMode) return;
+        this.syntaxMode = newMode;
         localStorage.setItem("lucy_syntax_mode", this.syntaxMode);
         this.renderSyntaxButton();
+        this.updateSettingsPills();
 
         // Convert all open models on the fly
         for (const tab of this.openTabs) {
@@ -680,6 +901,10 @@ class LucyApp {
         if (typeof runScriptDiagnostics === "function") {
             runScriptDiagnostics();
         }
+    }
+
+    toggleSyntaxMode() {
+        this.setSyntaxMode(this.syntaxMode === "english" ? "korean" : "english");
     }
 
     setupEventHandlers() {
@@ -724,6 +949,68 @@ class LucyApp {
         document.getElementById("btn-close-setup")?.addEventListener("click", () => this.closeSetupModal());
         document.getElementById("btn-browse-game")?.addEventListener("click", () => this.browseGameFolder());
         document.getElementById("btn-unpack-all")?.addEventListener("click", () => this.saveSettingsAndUnpack());
+
+        // Settings Modal Language & Syntax Pills
+        document.getElementById("btn-setting-lang-en")?.addEventListener("click", () => {
+            setLanguage("en");
+            this.updateSettingsPills();
+            this.renderSyntaxButton();
+            this.renderScriptTree();
+            this.renderTabs();
+            if (typeof renderCommandPalette === "function") {
+                renderCommandPalette("cmd-palette-container");
+            }
+            if (window.lucyApi) {
+                window.lucyApi.saveConfig({ language: "en" });
+            }
+        });
+
+        document.getElementById("btn-setting-lang-ru")?.addEventListener("click", () => {
+            setLanguage("ru");
+            this.updateSettingsPills();
+            this.renderSyntaxButton();
+            this.renderScriptTree();
+            this.renderTabs();
+            if (typeof renderCommandPalette === "function") {
+                renderCommandPalette("cmd-palette-container");
+            }
+            if (window.lucyApi) {
+                window.lucyApi.saveConfig({ language: "ru" });
+            }
+        });
+
+        document.getElementById("btn-setting-syntax-en")?.addEventListener("click", () => {
+            this.setSyntaxMode("english");
+        });
+
+        document.getElementById("btn-setting-syntax-ko")?.addEventListener("click", () => {
+            this.setSyntaxMode("korean");
+        });
+    }
+
+    openBigPreview() {
+        if (window.lucyApi && window.lucyApi.openBigPreview) {
+            window.lucyApi.openBigPreview();
+            setTimeout(() => {
+                this.syncToBigPreview();
+            }, 300);
+        }
+    }
+
+    syncToBigPreview(line = null) {
+        if (!window.lucyApi || !window.lucyApi.sendSyncPreview) return;
+        if (!editorInstance) return;
+
+        const pos = editorInstance.getPosition();
+        const currentLine = line !== null ? line : (pos ? pos.lineNumber : 1);
+        const content = editorInstance.getValue();
+
+        window.lucyApi.sendSyncPreview({
+            scriptName: this.activeTabName || "",
+            content: content,
+            line: currentLine,
+            syntaxMode: this.syntaxMode
+        });
     }
 
     setupKeybindings() {
@@ -779,6 +1066,16 @@ function showGlobalSpinner(show, text = "Operation in progress...") {
     } else {
         overlay.style.display = "none";
     }
+}
+
+function escapeHtml(str) {
+    if (!str) return "";
+    return String(str)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
 }
 
 const app = new LucyApp();

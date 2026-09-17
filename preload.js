@@ -28,10 +28,20 @@ contextBridge.exposeInMainWorld("lucyApi", {
     // Backups System
     listBackups: () => ipcRenderer.invoke("api:listBackups"),
     createBackup: (note) => ipcRenderer.invoke("api:createBackup", note),
+    renameBackup: (filename, newNote) => ipcRenderer.invoke("api:renameBackup", { filename, newNote }),
     restoreBackup: (filename) => ipcRenderer.invoke("api:restoreBackup", filename),
     deleteBackup: (filename) => ipcRenderer.invoke("api:deleteBackup", filename),
 
     // Assets & Import
     getAssetsList: () => ipcRenderer.invoke("api:getAssetsList"),
-    importAsset: (type) => ipcRenderer.invoke("api:importAsset", type)
+    importAsset: (type) => ipcRenderer.invoke("api:importAsset", type),
+
+    // Big Preview System
+    openBigPreview: () => ipcRenderer.invoke("api:openBigPreview"),
+    sendSyncPreview: (data) => ipcRenderer.send("preview:syncFromEditor", data),
+    onSyncPreview: (callback) => ipcRenderer.on("preview:syncToPlayer", (e, d) => callback(d)),
+    sendPreviewJump: (line) => ipcRenderer.send("preview:jumpToLine", line),
+    onPreviewJump: (callback) => ipcRenderer.on("preview:jumpInEditor", (e, line) => callback(line)),
+    requestInitialState: () => ipcRenderer.send("preview:requestInitialState"),
+    onRequestInitialState: (callback) => ipcRenderer.on("preview:requestStateForPlayer", (e) => callback())
 });

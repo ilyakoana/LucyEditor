@@ -183,13 +183,69 @@ function insertSnippetAtCursor(snippetText) {
         }
     }
 
+    const model = editorInstance.getModel();
+    if (!model) return;
+
     const selection = editorInstance.getSelection();
+
+    // If user actively selected a range of text, replace the selection
+    if (selection && !selection.isEmpty()) {
+        const op = {
+            range: selection,
+            text: snippetText + "\n",
+            forceMoveMarkers: true
+        };
+        editorInstance.executeEdits("LucyEditor", [op]);
+        editorInstance.focus();
+        return;
+    }
+
+    // Smart insertion: detect if cursor is on an existing statement
+    const pos = editorInstance.getPosition() || { lineNumber: 1, column: 1 };
+    const curLineNum = pos.lineNumber;
+    const curLineContent = model.getLineContent(curLineNum);
+    const trimmedCurLine = curLineContent.trim();
+    const totalLines = model.getLineCount();
+
+    // 1. If line is empty or whitespace-only, insert directly into it
+    if (trimmedCurLine.length === 0) {
+        const range = new monaco.Range(curLineNum, 1, curLineNum, curLineContent.length + 1);
+        const op = {
+            range: range,
+            text: snippetText + "\n",
+            forceMoveMarkers: true
+        };
+        editorInstance.executeEdits("LucyEditor", [op]);
+        editorInstance.setPosition({ lineNumber: curLineNum + snippetText.split("\n").length, column: 1 });
+        editorInstance.focus();
+        return;
+    }
+
+    // 2. Line has content! If dialogue line and followed by wait/대기, insert AFTER wait
+    const isDialogue = /^(?:dialogue|say|대사|continue|대사잇기)\b/i.test(trimmedCurLine);
+    let targetLineNum = curLineNum;
+
+    if (isDialogue && curLineNum < totalLines) {
+        const nextLineContent = model.getLineContent(curLineNum + 1).trim();
+        if (/^(?:wait|대기)$/i.test(nextLineContent)) {
+            targetLineNum = curLineNum + 1;
+        }
+    }
+
+    // 3. Insert cleanly on a new line after targetLineNum
+    const targetLineLength = model.getLineLength(targetLineNum);
+    const range = new monaco.Range(targetLineNum, targetLineLength + 1, targetLineNum, targetLineLength + 1);
     const op = {
-        range: selection,
-        text: snippetText + "\n",
+        range: range,
+        text: "\n" + snippetText,
         forceMoveMarkers: true
     };
     editorInstance.executeEdits("LucyEditor", [op]);
+
+    // Move cursor to the end of inserted block
+    const insertedLineCount = snippetText.split("\n").length;
+    editorInstance.setPosition({ lineNumber: targetLineNum + insertedLineCount, column: 1 });
+    editorInstance.revealLineInCenterIfOutsideViewport(targetLineNum + insertedLineCount);
     editorInstance.focus();
 }
 

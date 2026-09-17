@@ -515,11 +515,117 @@ const SyntaxTranslator = (() => {
         return out.join("\n");
     }
 
+    // Translated display names for script files (shown in tree & tabs)
+    const SCRIPT_NAME_MAP = {
+        // Characters
+        "루시.txt": { en: "Lucy.txt", ru: "Люси.txt" },
+        "기박사.txt": { en: "Dr_Baek.txt", ru: "Доктор_Пэк.txt" },
+        "박사1.txt": { en: "Dr_Baek_1.txt", ru: "Доктор_Пэк_1.txt" },
+        "박사2.txt": { en: "Dr_Baek_2.txt", ru: "Доктор_Пэк_2.txt" },
+        "박사3.txt": { en: "Dr_Baek_3.txt", ru: "Доктор_Пэк_3.txt" },
+        "박사4.txt": { en: "Dr_Baek_4.txt", ru: "Доктор_Пэк_4.txt" },
+        "박사5.txt": { en: "Dr_Baek_5.txt", ru: "Доктор_Пэк_5.txt" },
+        "가게주인.txt": { en: "Shopkeeper.txt", ru: "Хозяин_магазина.txt" },
+        "아버지.txt": { en: "Father.txt", ru: "Отец.txt" },
+        "앤드류.txt": { en: "Andrew.txt", ru: "Эндрю.txt" },
+        "청년.txt": { en: "Young_Man.txt", ru: "Молодой_человек.txt" },
+        "이름.txt": { en: "Name_Tags.txt", ru: "Имена_персонажей.txt" },
+
+        // System & Engine
+        "기본셋팅.txt": { en: "Default_Settings.txt", ru: "Базовые_настройки.txt" },
+        "대화창함수.txt": { en: "Textbox_Functions.txt", ru: "Функции_диалогового_окна.txt" },
+        "도움말.txt": { en: "Help_Guide.txt", ru: "Справка_Помощь.txt" },
+        "리셋질문.txt": { en: "Reset_Prompt.txt", ru: "Вопрос_о_сбросе.txt" },
+        "빠른스킵.txt": { en: "Fast_Skip.txt", ru: "Быстрый_пропуск.txt" },
+        "빠른스킵단축키.txt": { en: "Fast_Skip_Hotkey.txt", ru: "Горячая_клавиша_пропуска.txt" },
+        "스킵멈춤.txt": { en: "Skip_Stop.txt", ru: "Остановка_пропуска.txt" },
+        "스킵메뉴창.txt": { en: "Skip_Menu_Window.txt", ru: "Окно_меню_пропуска.txt" },
+        "자동넘기기.txt": { en: "Auto_Forward.txt", ru: "Авточтение.txt" },
+        "자동넘기기단축키.txt": { en: "Auto_Forward_Hotkey.txt", ru: "Горячая_клавиша_авточтения.txt" },
+        "날짜.txt": { en: "Date_Display.txt", ru: "Отображение_даты.txt" },
+        "앨범출력.txt": { en: "Album_Display.txt", ru: "Отображение_альбома.txt" },
+        "우회용.txt": { en: "Bypass.txt", ru: "Обходной_путь.txt" },
+        "텅빈.txt": { en: "Empty.txt", ru: "Пустой_скрипт.txt" },
+        "타이틀.txt": { en: "Title_Menu.txt", ru: "Главное_меню.txt" },
+        "크레딧.txt": { en: "Credits.txt", ru: "Титры.txt" },
+        "코멘트.txt": { en: "Developer_Commentary.txt", ru: "Комментарии_разработчиков.txt" },
+
+        // System UI & Menus
+        "시스템_CG갤러리.txt": { en: "System_CG_Gallery.txt", ru: "Система_CG_Галерея.txt" },
+        "시스템_CG갤러리_2.txt": { en: "System_CG_Gallery_2.txt", ru: "Система_CG_Галерея_2.txt" },
+        "시스템_글리치질문.txt": { en: "System_Glitch_Prompt.txt", ru: "Система_Вопрос_о_глюке.txt" },
+        "시스템_메세지박스.txt": { en: "System_Message_Box.txt", ru: "Система_Окно_сообщений.txt" },
+        "시스템_불러오기.txt": { en: "System_Load_Menu.txt", ru: "Система_Загрузка.txt" },
+        "시스템_업적.txt": { en: "System_Achievements.txt", ru: "Система_Достижения.txt" },
+        "시스템_엑스트라.txt": { en: "System_Extras.txt", ru: "Система_Экстра.txt" },
+        "시스템_옵션.txt": { en: "System_Options.txt", ru: "Система_Настройки.txt" },
+        "시스템_저장하기.txt": { en: "System_Save_Menu.txt", ru: "Система_Сохранение.txt" },
+        "시스템_키처리.txt": { en: "System_Key_Handling.txt", ru: "Система_Обработка_клавиш.txt" },
+        "시스템_타이틀로.txt": { en: "System_To_Title.txt", ru: "Система_В_главное_меню.txt" },
+        "시스템_회상.txt": { en: "System_Memories.txt", ru: "Система_Воспоминания.txt" },
+
+        // Story & Extras
+        "20년.txt": { en: "20_Years.txt", ru: "20_Лет.txt" },
+        "로봇3원칙.txt": { en: "Three_Laws_Robotics.txt", ru: "Три_закона_робототехники.txt" },
+        "시크릿.txt": { en: "Secret.txt", ru: "Секрет.txt" },
+        "열쇠.txt": { en: "Key.txt", ru: "Ключ.txt" },
+        "일기.txt": { en: "Diary.txt", ru: "Дневник.txt" },
+        "지나가는빛.txt": { en: "Passing_Light.txt", ru: "Проходящий_свет.txt" },
+        "지나가는빛트루엔딩.txt": { en: "Passing_Light_True_Ending.txt", ru: "Проходящий_свет_Истинный_финал.txt" },
+        "초로의기억.txt": { en: "Memories_of_Old_Man.txt", ru: "Память_старика.txt" },
+        "초로의기억스킵질문.txt": { en: "Old_Man_Skip_Prompt.txt", ru: "Пропуск_памяти_старика.txt" },
+
+        // Menus
+        "load_menu.txt": { en: "Load_Menu.txt", ru: "Меню_загрузки.txt" },
+        "save_menu.txt": { en: "Save_Menu.txt", ru: "Меню_сохранения.txt" },
+        "room_examine.txt": { en: "Room_Examine.txt", ru: "Осмотр_комнаты.txt" },
+        "default.txt": { en: "Default.txt", ru: "По_умолчанию.txt" }
+    };
+
+    /**
+     * Resolves human-friendly translated display name for a script file.
+     * @param {string} realName 
+     * @param {string} lang 'en' or 'ru'
+     * @returns {string} Translated name or original
+     */
+    function getScriptDisplayName(realName, lang = "en") {
+        if (!realName) return "";
+        const entry = SCRIPT_NAME_MAP[realName];
+        if (entry) {
+            return (lang === "ru" ? entry.ru : entry.en) || entry.en || realName;
+        }
+        const chapMatch = realName.match(/^chapter(\d+)\.txt$/i);
+        if (chapMatch) {
+            return lang === "ru" ? `Глава_${chapMatch[1]}.txt` : `Chapter_${chapMatch[1]}.txt`;
+        }
+        return realName;
+    }
+
+    /**
+     * Tooltip text showing original Korean filename on mouse hover.
+     * @param {string} realName 
+     * @param {string} lang 'en' or 'ru'
+     * @returns {string} Tooltip string
+     */
+    function getScriptTooltip(realName, lang = "en") {
+        if (!realName) return "";
+        const isRu = lang === "ru";
+        const entry = SCRIPT_NAME_MAP[realName];
+        const chapMatch = realName.match(/^chapter(\d+)\.txt$/i);
+        if (entry || chapMatch || /[\u3131-\uD79D]/.test(realName)) {
+            return isRu ? `Оригинальный файл игры: ${realName}` : `Original game file: ${realName}`;
+        }
+        return realName;
+    }
+
     return {
         koreanToVisual,
         visualToKorean,
         NAME_MAP_KO_TO_EN,
-        NAME_MAP_EN_TO_KO
+        NAME_MAP_EN_TO_KO,
+        SCRIPT_NAME_MAP,
+        getScriptDisplayName,
+        getScriptTooltip
     };
 })();
 

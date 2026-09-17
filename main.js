@@ -10,14 +10,17 @@ const fs = require("fs");
 const { spawn } = require("child_process");
 const { pathToFileURL } = require("url");
 
-const BASE_DIR = __dirname;
+const isPackaged = app.isPackaged;
+const RESOURCES_DIR = isPackaged ? process.resourcesPath : __dirname;
+const BASE_DIR = isPackaged ? app.getPath("userData") : __dirname;
 const CONFIG_FILE = path.join(BASE_DIR, "config.json");
 const STEAM_DEFAULT_DIR = "C:\\Program Files (x86)\\Steam\\steamapps\\common\\Lucy -The Eternity She Wished For-";
-const LOCAL_GAME_DIR = path.join(BASE_DIR, "originalGame", "Lucy -The Eternity She Wished For-");
+const LOCAL_GAME_DIR = path.join(__dirname, "originalGame", "Lucy -The Eternity She Wished For-");
 const EXTRACTED_DIR = path.join(BASE_DIR, "extracted");
 const SCRIPTS_DIR = path.join(EXTRACTED_DIR, "Scripts");
 
 let mainWindow = null;
+let previewWindow = null;
 
 function loadConfig() {
     let cfg = {
@@ -83,8 +86,109 @@ function createWindow() {
 
     mainWindow.loadFile(path.join(__dirname, "app", "index.html"));
 
+    let isForceClosing = false;
+
+    mainWindow.on("close", async (e) => {
+        if (isForceClosing) return;
+        e.preventDefault();
+
+        try {
+            const dirtyInfo = await mainWindow.webContents.executeJavaScript(`
+                (function() {
+                    if (!window.lucyApp || !window.lucyApp.openTabs) return { hasDirty: false, count: 0, names: [] };
+                    const dirtyTabs = window.lucyApp.openTabs.filter(t => t.isDirty);
+                    return {
+                        hasDirty: dirtyTabs.length > 0,
+                        count: dirtyTabs.length,
+                        names: dirtyTabs.map(t => {
+                            const disp = (typeof SyntaxTranslator !== 'undefined' && typeof currentLocale !== 'undefined')
+                                ? SyntaxTranslator.getScriptDisplayName(t.name, currentLocale)
+                                : t.name;
+                            return disp + (disp !== t.name ? ' (' + t.name + ')' : '');
+                        })
+                    };
+                })()
+            `);
+
+            if (dirtyInfo && dirtyInfo.hasDirty) {
+                const isRu = currentConfig.language === "ru";
+                const namesList = dirtyInfo.names.slice(0, 6).map(n => `• ${n}`).join("\n") + 
+                    (dirtyInfo.names.length > 6 ? `\n... (+${dirtyInfo.names.length - 6})` : "");
+
+                const choice = dialog.showMessageBoxSync(mainWindow, {
+                    type: "warning",
+                    buttons: isRu 
+                        ? ["Сохранить и выйти", "Выйти без сохранения", "Отмена"]
+                        : ["Save & Exit", "Exit Without Saving", "Cancel"],
+                    defaultId: 0,
+                    cancelId: 2,
+                    title: isRu ? "Несохранённые изменения — LucyEditor" : "Unsaved Changes — LucyEditor",
+                    message: isRu
+                        ? `У вас есть несохранённые изменения в следующих скриптах (${dirtyInfo.count}):\n\n${namesList}\n\nСохранить изменения перед выходом?`
+                        : `You have unsaved changes in the following script(s) (${dirtyInfo.count}):\n\n${namesList}\n\nDo you want to save changes before closing?`,
+                    noLink: true
+                });
+
+                if (choice === 0) {
+                    // Save & Exit
+                    await mainWindow.webContents.executeJavaScript(`window.lucyApp.saveAllScripts()`);
+                    isForceClosing = true;
+                    mainWindow.close();
+                } else if (choice === 1) {
+                    // Exit without saving
+                    isForceClosing = true;
+                    mainWindow.close();
+                } else {
+                    // Cancel
+                    return;
+                }
+            } else {
+                isForceClosing = true;
+                mainWindow.close();
+            }
+        } catch (err) {
+            console.error("Window close error:", err);
+            isForceClosing = true;
+            mainWindow.close();
+        }
+    });
+
     mainWindow.on("closed", () => {
         mainWindow = null;
+    });
+}
+
+function openBigPreviewWindow() {
+    if (previewWindow && !previewWindow.isDestroyed()) {
+        previewWindow.focus();
+        return;
+    }
+
+    previewWindow = new BrowserWindow({
+        width: 1280,
+        height: 720,
+        useContentSize: true,
+        resizable: false,
+        maximizable: false,
+        fullscreenable: false,
+        backgroundColor: "#000000",
+        title: "Lucy - Scene Preview (1280×720)",
+        icon: path.join(__dirname, "app", "assets", "icon.ico"),
+        autoHideMenuBar: true,
+        webPreferences: {
+            preload: path.join(__dirname, "preload.js"),
+            contextIsolation: true,
+            nodeIntegration: false,
+            webSecurity: false
+        }
+    });
+
+    previewWindow.loadFile(path.join(__dirname, "app", "preview.html"), {
+        query: { lang: currentConfig.language || "ru" }
+    });
+
+    previewWindow.on("closed", () => {
+        previewWindow = null;
     });
 }
 
@@ -100,6 +204,8 @@ app.whenReady().then(() => {
             folder = path.join(EXTRACTED_DIR, "BGMs");
         } else if (type === "fxs") {
             folder = path.join(EXTRACTED_DIR, "FXs");
+        } else if (type === "voices" || type === "voice") {
+            folder = path.join(EXTRACTED_DIR, "Voices");
         }
 
         const filePath = path.join(folder, path.basename(fname));
@@ -124,8 +230,17 @@ app.on("window-all-closed", () => {
 // Helper to run Python engine commands
 function runEngine(args) {
     return new Promise((resolve) => {
-        const py = spawn("python", [path.join(BASE_DIR, "nkpack_engine.py"), ...args], {
-            cwd: BASE_DIR
+        const enginePath = isPackaged 
+            ? path.join(RESOURCES_DIR, "nkpack_engine.py")
+            : path.join(__dirname, "nkpack_engine.py");
+
+        const py = spawn("python", [enginePath, ...args], {
+            cwd: BASE_DIR,
+            env: {
+                ...process.env,
+                LUCY_EXTRACTED_DIR: EXTRACTED_DIR,
+                LUCY_BACKUPS_DIR: path.join(BASE_DIR, "backups")
+            }
         });
         let stdout = "";
         let stderr = "";
@@ -353,6 +468,10 @@ function setupIpcHandlers() {
         return await runEngine(["backup-delete", filename]);
     });
 
+    ipcMain.handle("api:renameBackup", async (event, { filename, newNote }) => {
+        return await runEngine(["backup-rename", filename, newNote || "Backup"]);
+    });
+
     // 5. Import Asset
     ipcMain.handle("api:importAsset", async (event, type) => {
         const typeFolderMap = {
@@ -487,6 +606,30 @@ function setupIpcHandlers() {
             total_bgms: bgms.length,
             total_fxs: fxs.length
         };
+    });
+
+    // 9. Big Preview Window & IPC Relays
+    ipcMain.handle("api:openBigPreview", async () => {
+        openBigPreviewWindow();
+        return { success: true };
+    });
+
+    ipcMain.on("preview:syncFromEditor", (event, data) => {
+        if (previewWindow && !previewWindow.isDestroyed()) {
+            previewWindow.webContents.send("preview:syncToPlayer", data);
+        }
+    });
+
+    ipcMain.on("preview:jumpToLine", (event, line) => {
+        if (mainWindow && !mainWindow.isDestroyed()) {
+            mainWindow.webContents.send("preview:jumpInEditor", line);
+        }
+    });
+
+    ipcMain.on("preview:requestInitialState", (event) => {
+        if (mainWindow && !mainWindow.isDestroyed()) {
+            mainWindow.webContents.send("preview:requestStateForPlayer");
+        }
     });
 }
 

@@ -1,31 +1,39 @@
 /**
  * LucyEditor - Interactive Live Visual Novel Preview Simulator
- * Parses NekoNovel script flow and renders backgrounds, Lucy sprites, and dialogue boxes
- * with step-by-step playback and real-time synchronization with Monaco editor lines.
+ * Powered by NekoNovelInterpreter for 100% accurate scene reconstruction:
+ * - Scans from cursor line upward to accurately detect active/cleared sprites
+ * - Renders multiple characters simultaneously (Lucy, Dr. Baek, etc.)
+ * - Accurately processes character removal ('지우기', 'clear', 'clear_all')
+ * - Real-time sync with editor cursor position
+ * - Launches full 1280x720 interactive scene player
  */
 
 class LucyPreviewSimulator {
     constructor() {
+        this.currentContent = "";
+        this.lines = [];
         this.steps = [];
         this.currentIndex = 0;
+        this.currentLine = 1;
         this.syncWithEditor = true;
 
         this.bgEl = null;
-        this.spriteEl = null;
+        this.spritesContainerEl = null;
+        this.textboxEl = null;
         this.nameBadgeEl = null;
         this.dialogueTextEl = null;
-        this.indicatorEl = null;
         this.stepCounterEl = null;
     }
 
     init() {
         this.bgEl = document.getElementById("sim-bg");
-        this.spriteEl = document.getElementById("sim-sprite");
+        this.spritesContainerEl = document.getElementById("sim-sprites-container");
+        this.textboxEl = document.getElementById("sim-textbox");
         this.nameBadgeEl = document.getElementById("sim-speaker-name");
         this.dialogueTextEl = document.getElementById("sim-dialogue-text");
         this.stepCounterEl = document.getElementById("sim-step-counter");
 
-        // Click to advance
+        // Click on simulator screen to advance dialogue
         const screenEl = document.getElementById("sim-screen");
         if (screenEl) {
             screenEl.addEventListener("click", () => {
@@ -33,10 +41,11 @@ class LucyPreviewSimulator {
             });
         }
 
-        // Attach buttons
+        // Navigation controls
         const prevBtn = document.getElementById("btn-sim-prev");
         const nextBtn = document.getElementById("btn-sim-next");
         const syncBtn = document.getElementById("btn-sim-sync");
+        const bigPreviewBtn = document.getElementById("btn-open-big-preview");
 
         if (prevBtn) prevBtn.addEventListener("click", () => this.prevStep(true));
         if (nextBtn) nextBtn.addEventListener("click", () => this.nextStep(true));
@@ -44,191 +53,107 @@ class LucyPreviewSimulator {
             syncBtn.addEventListener("click", () => {
                 this.syncWithEditor = !this.syncWithEditor;
                 syncBtn.classList.toggle("active", this.syncWithEditor);
-                syncBtn.textContent = this.syncWithEditor ? "Синхрон: ВКЛ" : "Синхрон: ВЫКЛ";
+                const isRu = typeof currentLocale !== "undefined" && currentLocale === "ru";
+                syncBtn.textContent = this.syncWithEditor 
+                    ? (isRu ? "Синхрон: ВКЛ" : "Sync: ON")
+                    : (isRu ? "Синхрон: ВЫКЛ" : "Sync: OFF");
+            });
+        }
+
+        if (bigPreviewBtn) {
+            bigPreviewBtn.addEventListener("click", () => {
+                if (window.app && window.app.openBigPreview) {
+                    window.app.openBigPreview();
+                } else {
+                    this.openBigPreview();
+                }
             });
         }
     }
 
     /**
-     * Parses the active script text into timeline steps.
+     * Parses the active script into timeline steps for navigation.
      */
     parseScript(content) {
-        const lines = content.split("\n");
-        const steps = [];
+        this.currentContent = content || "";
+        this.lines = this.currentContent.split("\n");
 
-        let currentBg = null;
-        let currentSprite = null;
-        let currentSpeaker = "";
-        let accumulatedText = "";
-
-        for (let i = 0; i < lines.length; i++) {
-            const rawLine = lines[i];
-            const line = rawLine.trim();
-            const lineNum = i + 1;
-
-            if (line.startsWith("//") || line.length === 0) continue;
-
-            // Background change (Korean: 배경/CG, Visual: bg/cg)
-            if (line.startsWith("배경 ") || /^bg\s+/i.test(line)) {
-                const parts = line.split(/\s+/);
-                if (parts.length >= 3) {
-                    currentBg = parts[2];
-                } else if (parts.length >= 2) {
-                    currentBg = parts[1];
-                }
-            } else if (line.startsWith("CG ") || /^cg\s+/i.test(line)) {
-                const parts = line.split(/\s+/);
-                if (parts.length >= 3) {
-                    const fname = parts[2];
-                    if (fname.startsWith("bg_") || fname.startsWith("ev")) {
-                        currentBg = fname;
-                    } else if (fname.startsWith("l") || fname.startsWith("f") || fname.startsWith("d")) {
-                        currentSprite = fname;
-                    }
-                }
-            }
-
-            // Character speaker name tag (Korean: 스크립트 이름.txt, Visual: call 이름.txt)
-            if (line.startsWith("스크립트 이름.txt") || /^(?:call|script)\s+(?:이름\.txt|name\.txt)/i.test(line)) {
-                const parts = line.split(/\s+/);
-                if (parts.length >= 3) {
-                    const tag = parts[2].toLowerCase();
-                    const isRu = typeof currentLocale !== "undefined" && currentLocale === "ru";
-
-                    if (tag === "주인공" || tag === "protagonist" || tag === "protagonist1") {
-                        currentSpeaker = isRu ? "Главный герой" : "Protagonist";
-                    } else if (tag === "루시" || tag === "lucy" || tag === "lucy1") {
-                        currentSpeaker = isRu ? "Люси" : "Lucy";
-                    } else if (tag === "기박사" || tag === "dr_baek" || tag === "doctor" || tag === "dr_baek1") {
-                        currentSpeaker = isRu ? "Доктор Пэк" : "Dr. Baek";
-                    } else if (tag === "가게주인" || tag === "shopkeeper") {
-                        currentSpeaker = isRu ? "Хозяин магазина" : "Shopkeeper";
-                    } else if (tag.startsWith("안드로이드") || tag.startsWith("android")) {
-                        currentSpeaker = isRu ? "Андроид" : "Android";
-                    } else if (tag === "아버지" || tag === "father") {
-                        currentSpeaker = isRu ? "Отец" : "Father";
-                    } else if (tag === "앤드류" || tag === "andrew") {
-                        currentSpeaker = isRu ? "Эндрю" : "Andrew";
-                    } else if (tag === "청년" || tag === "young_man") {
-                        currentSpeaker = isRu ? "Молодой человек" : "Young Man";
-                    } else if (tag === "이름지우기" || tag === "이름지우기대사창" || tag === "clear_name" || tag === "hide_name_and_box") {
-                        currentSpeaker = "";
-                    } else {
-                        currentSpeaker = parts[2];
-                    }
-                }
-            }
-
-            // Dialogue line (Korean: 대사, Visual: dialogue / say)
-            const diaMatch = line.match(/^(?:대사|dialogue|say)\s+(.*)$/i);
-            const contMatch = line.match(/^(?:대사잇기|continue)\s+(.*)$/i);
-
-            if (diaMatch) {
-                let text = diaMatch[1].trim();
-                // Strip surrounding quotes if present for cleaner preview
-                if ((text.startsWith('"') && text.endsWith('"')) || (text.startsWith('“') && text.endsWith('”'))) {
-                    text = text.slice(1, -1);
-                }
-                accumulatedText = text;
-
-                steps.push({
-                    lineNum,
-                    speaker: currentSpeaker,
-                    text: accumulatedText,
-                    bg: currentBg,
-                    sprite: currentSprite
-                });
-            } else if (contMatch) {
-                let text = contMatch[1].trim();
-                if ((text.startsWith('"') && text.endsWith('"')) || (text.startsWith('“') && text.endsWith('”'))) {
-                    text = text.slice(1, -1);
-                }
-                accumulatedText += (accumulatedText ? "\n" : "") + text;
-
-                steps.push({
-                    lineNum,
-                    speaker: currentSpeaker,
-                    text: accumulatedText,
-                    bg: currentBg,
-                    sprite: currentSprite
-                });
-            } else if (line === "대사지우기" || /^clear_dialogue$/i.test(line)) {
-                accumulatedText = "";
-            }
+        if (typeof NekoNovelInterpreter !== "undefined") {
+            const lang = typeof currentLocale !== "undefined" ? currentLocale : "en";
+            this.steps = NekoNovelInterpreter.parseTimelineSteps(this.lines, lang);
+        } else {
+            this.steps = [];
         }
 
-        this.steps = steps;
         if (this.currentIndex >= this.steps.length) {
             this.currentIndex = Math.max(0, this.steps.length - 1);
         }
-        this.renderCurrentStep();
+
+        // Render state at current line or active step
+        if (this.steps.length > 0) {
+            const step = this.steps[this.currentIndex];
+            this.renderState(step);
+        } else {
+            this.syncToLine(this.currentLine || 1);
+        }
     }
 
     /**
-     * Finds the closest step corresponding to the editor line number.
+     * Synchronizes preview precisely to the editor's cursor line.
+     * Analyzes all statements from line 1 up to targetLine to reconstruct scene state.
      */
     syncToLine(targetLine) {
-        if (!this.syncWithEditor || this.steps.length === 0) return;
+        this.currentLine = targetLine;
+        if (!this.syncWithEditor || !this.currentContent) return;
 
-        let closestIdx = 0;
-        for (let i = 0; i < this.steps.length; i++) {
-            if (this.steps[i].lineNum <= targetLine) {
-                closestIdx = i;
-            } else {
-                break;
+        const lang = typeof currentLocale !== "undefined" ? currentLocale : "en";
+        if (typeof NekoNovelInterpreter !== "undefined") {
+            const state = NekoNovelInterpreter.analyzeSceneAtLine(this.lines, targetLine, lang);
+            
+            // Find closest dialogue step for counter display
+            let closestStepIdx = 0;
+            for (let i = 0; i < this.steps.length; i++) {
+                if (this.steps[i].lineNum <= targetLine) {
+                    closestStepIdx = i;
+                } else {
+                    break;
+                }
             }
-        }
+            this.currentIndex = closestStepIdx;
 
-        if (closestIdx !== this.currentIndex) {
-            this.currentIndex = closestIdx;
-            this.renderCurrentStep();
+            this.renderState(state);
         }
     }
 
     nextStep(jumpToCode = false) {
+        if (this.steps.length === 0) return;
         if (this.currentIndex < this.steps.length - 1) {
             this.currentIndex++;
-            this.renderCurrentStep();
-            if (jumpToCode && this.steps[this.currentIndex]) {
-                goToLine(this.steps[this.currentIndex].lineNum);
+            const step = this.steps[this.currentIndex];
+            this.syncToLine(step.lineNum);
+            if (jumpToCode && typeof goToLine === "function") {
+                goToLine(step.lineNum);
             }
         }
     }
 
     prevStep(jumpToCode = false) {
+        if (this.steps.length === 0) return;
         if (this.currentIndex > 0) {
             this.currentIndex--;
-            this.renderCurrentStep();
-            if (jumpToCode && this.steps[this.currentIndex]) {
-                goToLine(this.steps[this.currentIndex].lineNum);
+            const step = this.steps[this.currentIndex];
+            this.syncToLine(step.lineNum);
+            if (jumpToCode && typeof goToLine === "function") {
+                goToLine(step.lineNum);
             }
         }
     }
 
-    renderCurrentStep() {
-        if (this.steps.length === 0) {
-            if (this.dialogueTextEl) this.dialogueTextEl.textContent = "Нет диалоговых реплик в текущем скрипте.";
-            if (this.nameBadgeEl) this.nameBadgeEl.style.display = "none";
-            if (this.stepCounterEl) this.stepCounterEl.textContent = "Реплик: 0";
-            return;
-        }
-
-        const step = this.steps[this.currentIndex];
-
-        // 1. Speaker name badge
-        if (this.nameBadgeEl) {
-            if (step.speaker) {
-                this.nameBadgeEl.textContent = step.speaker;
-                this.nameBadgeEl.style.display = "inline-block";
-            } else {
-                this.nameBadgeEl.style.display = "none";
-            }
-        }
-
-        // 2. Dialogue text
-        if (this.dialogueTextEl) {
-            this.dialogueTextEl.innerHTML = step.text.replace(/\n/g, "<br>");
-        }
+    /**
+     * Renders a calculated scene state into the preview DOM elements.
+     */
+    renderState(state) {
+        if (!state) return;
 
         function getAssetUrl(type, name) {
             if (window.lucyApi) {
@@ -237,11 +162,10 @@ class LucyPreviewSimulator {
             return `/api/assets/file?type=${type}&name=${encodeURIComponent(name)}`;
         }
 
-        // 3. Background image
+        // 1. Background image
         if (this.bgEl) {
-            if (step.bg) {
-                let cleanBg = step.bg.replace(/\{\{\$skin\}\}/g, "");
-                this.bgEl.src = getAssetUrl("Images", cleanBg);
+            if (state.background) {
+                this.bgEl.src = getAssetUrl("Images", state.background);
                 this.bgEl.style.display = "block";
             } else {
                 this.bgEl.src = getAssetUrl("Images", "bg_room01_day.jpg");
@@ -249,20 +173,112 @@ class LucyPreviewSimulator {
             }
         }
 
-        // 4. Character sprite
-        if (this.spriteEl) {
-            if (step.sprite) {
-                let cleanSprite = step.sprite.replace(/\{\{\$skin\}\}/g, "");
-                this.spriteEl.src = getAssetUrl("Images", cleanSprite);
-                this.spriteEl.style.display = "block";
-            } else {
-                this.spriteEl.style.display = "none";
+        // Dim overlay (black_background_40)
+        const dimEl = document.getElementById("sim-dim");
+        if (dimEl) {
+            dimEl.classList.toggle("active", !!state.dimOverlay);
+        }
+
+        // 2. Character sprites (Full 1280x720 overlays with smooth 1.0s transitions)
+        if (this.spritesContainerEl) {
+            const charList = state.charList || Object.values(state.characters || {});
+            const targetIds = new Set(charList.map(c => c.id));
+
+            // Smoothly fade out deleted sprites
+            const existing = Array.from(this.spritesContainerEl.querySelectorAll(".sim-char-sprite"));
+            for (const el of existing) {
+                const cid = el.getAttribute("data-char-id");
+                if (!targetIds.has(cid)) {
+                    el.style.opacity = "0";
+                    setTimeout(() => {
+                        if (el.parentNode && el.style.opacity === "0") el.remove();
+                    }, 1000);
+                }
+            }
+
+            // Add or update sprites
+            for (const char of charList) {
+                let el = this.spritesContainerEl.querySelector(`[data-char-id="${char.id}"]`);
+                const src = getAssetUrl("Images", char.sprite);
+                if (!el) {
+                    el = document.createElement("img");
+                    el.className = "sim-char-sprite";
+                    el.setAttribute("data-char-id", char.id);
+                    el.src = src;
+                    el.alt = char.id;
+                    el.style.opacity = "0";
+                    el.style.transition = "opacity 1.0s ease-in-out";
+                    this.spritesContainerEl.appendChild(el);
+                    void el.offsetWidth;
+                    el.style.opacity = "1";
+                } else {
+                    el.style.opacity = "1";
+                    if (el.getAttribute("src") !== src) {
+                        el.src = src;
+                    }
+                }
             }
         }
 
-        // 5. Counter badge
+        // 3. Textbox visibility
+        if (this.textboxEl) {
+            this.textboxEl.style.display = state.textboxVisible ? "block" : "none";
+        }
+
+        // 4. Speaker name badge
+        if (this.nameBadgeEl) {
+            if (state.speaker) {
+                this.nameBadgeEl.textContent = state.speaker;
+                this.nameBadgeEl.style.display = "inline-block";
+            } else {
+                this.nameBadgeEl.style.display = "none";
+            }
+        }
+
+        // 5. Dialogue text
+        if (this.dialogueTextEl) {
+            if (state.dialogueText) {
+                this.dialogueTextEl.innerHTML = state.dialogueText.replace(/\n/g, "<br>");
+            } else {
+                const isRu = typeof currentLocale !== "undefined" && currentLocale === "ru";
+                this.dialogueTextEl.innerHTML = `<i>${isRu ? "..." : "..."}</i>`;
+            }
+        }
+
+        // 6. Step counter badge
         if (this.stepCounterEl) {
-            this.stepCounterEl.textContent = `Реплика ${this.currentIndex + 1} из ${this.steps.length} (стр ${step.lineNum})`;
+            const isRu = typeof currentLocale !== "undefined" && currentLocale === "ru";
+            if (this.steps.length > 0) {
+                this.stepCounterEl.textContent = isRu 
+                    ? `Реплика ${this.currentIndex + 1} из ${this.steps.length} (стр ${state.lineNum})`
+                    : `Line ${this.currentIndex + 1} of ${this.steps.length} (line ${state.lineNum})`;
+            } else {
+                this.stepCounterEl.textContent = isRu
+                    ? `Стр ${state.lineNum}`
+                    : `Line ${state.lineNum}`;
+            }
+        }
+    }
+
+    /**
+     * Launches the full 1280x720 interactive scene player window.
+     */
+    async openBigPreview() {
+        if (window.lucyApi && window.lucyApi.openBigPreview) {
+            await window.lucyApi.openBigPreview();
+            
+            // Send current script content and cursor line immediately
+            if (window.lucyApi.sendSyncPreview) {
+                window.lucyApi.sendSyncPreview({
+                    scriptName: window.lucyApp ? window.lucyApp.activeTabName : "script.txt",
+                    content: this.currentContent,
+                    line: this.currentLine || 1
+                });
+            }
+        } else {
+            if (typeof showToast === "function") {
+                showToast("Big Preview is supported in LucyEditor Electron desktop app.", "info");
+            }
         }
     }
 }

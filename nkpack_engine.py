@@ -385,13 +385,49 @@ class NkpackEngine:
 
         return {"success": True, "deleted": safe_name}
 
+    def rename_backup(self, filename: str, new_note: str) -> Dict:
+        """Renames the note/description of a backup file."""
+        safe_name = os.path.basename(filename)
+        backup_path = os.path.join(self.backups_dir, safe_name)
+        if not os.path.exists(backup_path):
+            return {"success": False, "error": f"Backup not found: {safe_name}"}
+
+        meta_file = os.path.join(self.backups_dir, "backups.json")
+        meta = {}
+        if os.path.exists(meta_file):
+            try:
+                with open(meta_file, "r", encoding="utf-8") as f:
+                    meta = json.load(f)
+            except Exception:
+                meta = {}
+
+        if safe_name not in meta:
+            meta[safe_name] = {
+                "timestamp": int(os.path.getmtime(backup_path))
+            }
+
+        cleaned_note = (new_note or "").strip()
+        if not cleaned_note:
+            cleaned_note = "Backup"
+
+        meta[safe_name]["note"] = cleaned_note
+
+        try:
+            with open(meta_file, "w", encoding="utf-8") as f:
+                json.dump(meta, f, ensure_ascii=False, indent=2)
+        except Exception as e:
+            return {"success": False, "error": f"Failed to save metadata: {e}"}
+
+        return {"success": True, "filename": safe_name, "note": cleaned_note}
+
 
 if __name__ == "__main__":
     sys.stdout.reconfigure(encoding="utf-8")
     base = os.path.dirname(os.path.abspath(__file__))
     game = os.path.join(base, "originalGame", "Lucy -The Eternity She Wished For-")
-    ext = os.path.join(base, "extracted")
-    engine = NkpackEngine(game, ext)
+    ext = os.environ.get("LUCY_EXTRACTED_DIR") or os.path.join(base, "extracted")
+    backups = os.environ.get("LUCY_BACKUPS_DIR") or os.path.join(base, "backups")
+    engine = NkpackEngine(game, ext, backups_dir=backups)
 
     action = sys.argv[1] if len(sys.argv) > 1 else "status"
     try:
@@ -417,6 +453,10 @@ if __name__ == "__main__":
         elif action == "backup-delete":
             fname = sys.argv[2]
             res = engine.delete_backup(fname)
+        elif action == "backup-rename":
+            fname = sys.argv[2]
+            new_note = " ".join(sys.argv[3:]) if len(sys.argv) > 3 else "Backup"
+            res = engine.rename_backup(fname, new_note)
         else:
             res = {"success": False, "error": f"Unknown action: {action}"}
         print(json.dumps(res, ensure_ascii=False))

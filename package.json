@@ -1,11 +1,63 @@
 {
   "name": "lucy-editor",
   "productName": "LucyEditor",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Modern Visual Novel Modding Studio for Lucy -The Eternity She Wished For-",
   "main": "main.js",
   "scripts": {
-    "start": "electron ."
+    "start": "electron .",
+    "dist": "electron-builder --win"
+  },
+  "build": {
+    "appId": "com.lucyeditor.app",
+    "productName": "LucyEditor",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "main.js",
+      "preload.js",
+      "app/**/*",
+      "!originalGame",
+      "!originalGame/**/*",
+      "!extracted",
+      "!extracted/**/*",
+      "!backups",
+      "!backups/**/*",
+      "!dist",
+      "!dist/**/*",
+      "!*.bat",
+      "!*.md",
+      "!*.readme"
+    ],
+    "extraResources": [
+      "nkpack_engine.py",
+      "quickbms.exe",
+      "lucy.bms"
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "app/assets/icon.ico"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "allowElevation": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "LucyEditor",
+      "installerIcon": "app/assets/icon.ico",
+      "uninstallerIcon": "app/assets/icon.ico",
+      "uninstallDisplayName": "LucyEditor Modding Studio",
+      "runAfterFinish": true
+    }
   },
   "keywords": [
     "lucy",
@@ -17,6 +69,7 @@
   "author": "LucyEditor Community",
   "license": "MIT",
   "devDependencies": {
-    "electron": "^44.3.0"
+    "electron": "^44.3.0",
+    "electron-builder": "^26.15.3"
   }
 }

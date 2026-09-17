@@ -1,7 +1,7 @@
 # LucyEditor 🌸
 > **A Modern Visual Novel Modding Studio & Script IDE for *"Lucy -The Eternity She Wished For-"* (루시 -그녀가 바라던 것-)**
 
-[![GitHub release](https://img.shields.io/badge/release-v1.0.0-blue.svg?style=for-the-badge)](https://github.com/ilyakoana/lucyeditor)
+[![GitHub release](https://img.shields.io/badge/release-v1.0.1-blue.svg?style=for-the-badge)](https://github.com/ilyakoana/lucyeditor)
 [![Electron](https://img.shields.io/badge/Electron-44.3.0-47848F?style=for-the-badge&logo=electron&logoColor=white)](https://www.electronjs.org/)
 [![Python](https://img.shields.io/badge/Python-3.8+-3776AB?style=for-the-badge&logo=python&logoColor=white)](https://www.python.org/)
 [![Platform](https://img.shields.io/badge/Platform-Windows-0078D6?style=for-the-badge&logo=windows&logoColor=white)](https://microsoft.com/windows)

@@ -20,6 +20,8 @@ __pycache__/
 originalGame/
 backups/
 extracted/
+dist/
+scratch/
 
 # OS specific files
 Thumbs.db

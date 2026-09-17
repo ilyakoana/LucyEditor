@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=1280, height=720, initial-scale=1.0, user-scalable=no">
+    <title>Lucy - Scene Preview (1280×720)</title>
+    <link rel="stylesheet" href="css/preview.css">
+</head>
+<body>
+    <div id="game-stage" class="game-stage">
+        <!-- Background Layers for smooth crossfades -->
+        <div id="layer-bg-back" class="layer-bg"></div>
+        <div id="layer-bg-front" class="layer-bg active"></div>
+
+        <!-- Dim overlay (black_background_40) -->
+        <div id="layer-dim" class="layer-dim"></div>
+
+        <!-- Credits overlay (credit_start_X) -->
+        <div id="layer-credits" class="layer-credits"></div>
+
+        <!-- Named CG Layers Container (bg_dump01big, loading_glitch, custom CGs) -->
+        <div id="layer-cg-container" class="layer-cg-container"></div>
+
+        <!-- Character Sprites Layer -->
+        <div id="layer-sprites" class="layer-sprites"></div>
+
+        <!-- Screen Flash & Shake FX -->
+        <div id="layer-effects" class="layer-effects"></div>
+
+        <!-- Rule transition wipe overlay -->
+        <div id="layer-transition" class="layer-transition"></div>
+
+        <!-- Authentic Lucy Textbox & Dialogue Layer (1280x720) -->
+        <div id="layer-textbox" class="layer-textbox visible">
+            <!-- Authentic game textbox overlay (lines.png) -->
+            <img id="textbox-skin" class="textbox-skin" src="lucy-asset://images/lines.png" alt="" onerror="this.style.display='none'" />
+
+            <!-- Speaker Name (CG light_name.png at 0, 436 and name graphics at 105, 466) -->
+            <div id="speaker-container" class="speaker-container">
+                <img id="speaker-light" class="speaker-light" src="lucy-asset://images/light_name.png" alt="" onerror="this.style.display='none'" />
+                <img id="speaker-graphic" class="speaker-graphic" src="" alt="" style="display:none;" />
+                <div id="speaker-text" class="speaker-text"></div>
+            </div>
+
+            <!-- Dialogue Text Area (x: 148, y: 547, w: 1002, h: 164) -->
+            <div id="dialogue-box" class="dialogue-box">
+                <div id="dialogue-text" class="dialogue-text"></div>
+                <div id="dialogue-cursor" class="dialogue-cursor">▼</div>
+            </div>
+        </div>
+
+        <!-- Fullscreen Clickable Surface to Advance Dialogue or Skip Typewriter -->
+        <div id="stage-click-catcher" class="stage-click-catcher" title="Кликните для перехода к следующей реплике"></div>
+
+        <!-- Floating HUD Toolbar (Draggable, subtle autohide) -->
+        <header id="preview-hud" class="preview-hud">
+            <div class="hud-left">
+                <div class="hud-badge">
+                    <span class="hud-dot"></span>
+                    <span id="hud-script-name">No script</span>
+                </div>
+                <div class="hud-line-indicator">
+                    <span>Строка:</span>
+                    <strong id="hud-line-num">1</strong>
+                </div>
+            </div>
+
+            <div class="hud-center">
+                <button id="btn-prev" class="hud-btn" title="Предыдущая реплика (←)">⏮</button>
+                <button id="btn-play" class="hud-btn hud-btn-primary" title="Воспроизведение (Space)">▶ Старт</button>
+                <button id="btn-next" class="hud-btn" title="Следующая реплика (→)">⏭</button>
+                <button id="btn-restart" class="hud-btn" title="В начало сцены (Home)">🔄</button>
+            </div>
+
+            <div class="hud-right">
+                <label class="hud-toggle" title="Автоматически переходить к строке, на которой стоит курсор в Monaco Editor">
+                    <input type="checkbox" id="check-sync-cursor" checked />
+                    <span class="hud-toggle-slider"></span>
+                    <span class="hud-toggle-label">Следить за курсором</span>
+                </label>
+
+                <div class="hud-volume">
+                    <span id="hud-vol-icon" class="hud-vol-icon">🔊</span>
+                    <input type="range" id="volume-slider" min="0" max="100" value="75" title="Громкость звука и музыки" />
+                </div>
+            </div>
+        </header>
+
+        <!-- Audio Channels -->
+        <audio id="audio-bgm" loop preload="auto"></audio>
+        <audio id="audio-sfx" preload="auto"></audio>
+        <audio id="audio-voice" preload="auto"></audio>
+        <!-- First-time Engine Disclaimer Modal -->
+        <div id="modal-disclaimer" class="modal-disclaimer" style="display: none;">
+            <div class="disclaimer-card">
+                <div class="disclaimer-header">
+                    <span class="disclaimer-icon">⚠️</span>
+                    <h3 id="disclaimer-title">Режим предварительного просмотра сцены</h3>
+                </div>
+                <div class="disclaimer-body">
+                    <p id="disclaimer-desc1">
+                        Обратите внимание: данный плеер является встроенной эмуляцией движка NekoNovel (1280×720).
+                    </p>
+                    <p id="disclaimer-desc2">
+                        В сложных сценах (параллельные потоки анимаций, скриптовые условия или системные вызовы) отображение может значительно отличаться от оригинальной игры.
+                    </p>
+                    <div id="disclaimer-tip" class="disclaimer-tip">
+                        💡 <strong>Для полноценной проверки мода:</strong> соберите мод кнопкой <em>«Собрать Мод»</em> и запустите оригинальную игру кнопкой <em>«Запустить Игру» (F5)</em>.
+                    </div>
+                </div>
+                <div class="disclaimer-footer">
+                    <label class="disclaimer-checkbox">
+                        <input type="checkbox" id="check-dont-show-disclaimer" />
+                        <span id="disclaimer-dont-show">Больше не показывать это окно</span>
+                    </label>
+                    <button id="btn-close-disclaimer" class="btn-disclaimer-ok">Понятно</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Engine Scripts -->
+    <script src="js/nekonovel_interpreter.js"></script>
+    <script src="js/big_preview.js"></script>
+</body>
+</html>
